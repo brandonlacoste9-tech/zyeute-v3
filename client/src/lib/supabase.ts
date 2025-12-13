@@ -122,7 +122,16 @@ export async function signOut() {
 }
 
 export async function signInWithGoogle() {
-  return await supabase.auth.signInWithOAuth({ provider: 'google' });
+  const redirectUrl = import.meta.env.PROD
+    ? 'https://zyeute-v3.vercel.app'
+    : window.location.origin;
+
+  return await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: redirectUrl
+    }
+  });
 }
 
 export async function uploadFile(bucket: string, path: string, file: File) {

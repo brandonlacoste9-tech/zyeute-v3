@@ -69,9 +69,23 @@ export const Login: React.FC = () => {
     setIsLoading(true);
     setError('');
     try {
-      // Google OAuth is not available without proper setup
-      setError('Connexion Google non disponible. Utilise ton courriel.');
-      setIsLoading(false);
+      // Import dynamically to avoid bundling issues
+      const { signInWithGoogle } = await import('../lib/supabase');
+
+      // Log env vars for debugging
+      loginLogger.info('🔍 Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+      loginLogger.info('🔍 Supabase Key exists:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
+
+      const { data, error } = await signInWithGoogle();
+
+      if (error) {
+        loginLogger.error('❌ Google OAuth error:', error.message);
+        throw error;
+      }
+
+      loginLogger.info('✅ Google OAuth initiated:', data);
+
+      // OAuth will redirect, so we don't need to do anything else
     } catch (err: any) {
       loginLogger.error('❌ Google sign-in error:', err);
       setError(err?.message || 'Erreur de connexion avec Google');
