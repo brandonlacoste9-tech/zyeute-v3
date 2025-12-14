@@ -10,9 +10,9 @@ import {
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { fal } from "@fal-ai/client";
-import { v3TiGuyChat, v3Flow, v3Feed, v3Microcopy, FAL_PRESETS } from "./v3-swa.jsrm";
-import emailAutomation from "./email-automatio.jsn";
-import { setupAuth, isAuthenticated } from "./replitAut.jsh";
+import { v3TiGuyChat, v3Flow, v3Feed, v3Microcopy, FAL_PRESETS } from "./v3-swarm.js";
+import emailAutomation from "./email-automation.js";
+import { setupAuth, isAuthenticated } from ""./replitAuth.js";
 
 // Configure FAL client
 fal.config({
