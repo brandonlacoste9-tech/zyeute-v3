@@ -3,8 +3,8 @@ import type { Server } from "http";
 import session from "express-session";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage.js";
-import { 
-  insertUserSchema, insertPostSchema, insertCommentSchema, 
+import {
+  insertUserSchema, insertPostSchema, insertCommentSchema,
   insertStorySchema, GIFT_CATALOG, type GiftType
 } from "../shared/schema.js";
 import { z } from "zod";
@@ -13,6 +13,7 @@ import { fal } from "@fal-ai/client";
 import { v3TiGuyChat, v3Flow, v3Feed, v3Microcopy, FAL_PRESETS } from "./v3-swarm.js";
 import emailAutomation from "./email-automation.js";
 import { setupAuth, isAuthenticated } from "./replitAuth.js";
+import { requireSupabaseAuth, optionalSupabaseAuth, getSupabaseUser, supabaseAdmin } from "./supabase-auth.js";
 
 // Configure FAL client
 fal.config({
@@ -57,12 +58,40 @@ declare module 'express-session' {
   }
 }
 
-// Auth middleware - defensive check for session existence
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  if (!req.session || !req.session.userId) {
-    return res.status(401).json({ error: "Unauthorized" });
+// Helper to get user ID from either JWT or session
+function getUserId(req: Request): string | undefined {
+  return (req as any).userId || req.session?.userId;
+}
+
+// Hybrid auth middleware - accepts both JWT and session-based auth
+// This allows gradual migration from sessions to JWT
+async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  // Check for Supabase JWT first (preferred method)
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ') && supabaseAdmin) {
+    try {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+
+      if (user && !error) {
+        // JWT auth successful - attach user info
+        (req as any).supabaseUser = user;
+        (req as any).userId = user.id;
+        return next();
+      }
+    } catch (error) {
+      console.error('[Auth] JWT verification failed:', error);
+      // Fall through to session check
+    }
   }
-  next();
+
+  // Fallback to session-based auth (legacy)
+  if (req.session && req.session.userId) {
+    (req as any).userId = req.session.userId;
+    return next();
+  }
+
+  return res.status(401).json({ error: "Unauthorized" });
 }
 
 export async function registerRoutes(
