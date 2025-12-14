@@ -13,7 +13,8 @@ import { fal } from "@fal-ai/client";
 import { v3TiGuyChat, v3Flow, v3Feed, v3Microcopy, FAL_PRESETS } from "./v3-swarm.js";
 import emailAutomation from "./email-automation.js";
 import { setupAuth, isAuthenticated } from "./replitAuth.js";
-import { requireSupabaseAuth, optionalSupabaseAuth, getSupabaseUser, supabaseAdmin } from "./supabase-auth.js";
+// [NEW] Import the JWT verifier
+import { verifyAuthToken } from "./supabase-auth.js";
 
 // Configure FAL client
 fal.config({
@@ -58,39 +59,34 @@ declare module 'express-session' {
   }
 }
 
-// Helper to get user ID from either JWT or session
-function getUserId(req: Request): string | undefined {
-  return (req as any).userId || req.session?.userId;
-}
-
-// Hybrid auth middleware - accepts both JWT and session-based auth
-// This allows gradual migration from sessions to JWT
+// [UPDATED] Hybrid Auth Middleware
+// Accepts:
+// 1. Authorization: Bearer <jwt> (New, Stateless)
+// 2. Cookie Session (Legacy, Stateful)
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
-  // Check for Supabase JWT first (preferred method)
+  // Strategy 1: Check for Supabase JWT (Bearer Token)
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ') && supabaseAdmin) {
-    try {
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.split(" ")[1];
+    const userId = await verifyAuthToken(token);
 
-      if (user && !error) {
-        // JWT auth successful - attach user info
-        (req as any).supabaseUser = user;
-        (req as any).userId = user.id;
-        return next();
+    if (userId) {
+      // Bridge the gap: Inject the ID into the legacy session object
+      // This allows existing route handlers (req.session.userId) to work without changes
+      if (!req.session) {
+        req.session = {} as any;
       }
-    } catch (error) {
-      console.error('[Auth] JWT verification failed:', error);
-      // Fall through to session check
+      req.session.userId = userId;
+      return next();
     }
   }
 
-  // Fallback to session-based auth (legacy)
+  // Strategy 2: Fallback to Legacy Session (Cookie)
   if (req.session && req.session.userId) {
-    (req as any).userId = req.session.userId;
     return next();
   }
 
+  // If both fail
   return res.status(401).json({ error: "Unauthorized" });
 }
 
