@@ -651,21 +651,29 @@ export async function registerRoutes(
       
       console.log(`Generating image with Flux: "${prompt.substring(0, 50)}..."`);
       
-      const result = await fal.subscribe("fal-ai/flux/schnell", {
-        input: {
-          prompt,
-          image_size: aspectRatio === "16:9" ? "landscape_16_9" : 
-                      aspectRatio === "9:16" ? "portrait_16_9" : 
-                      aspectRatio === "4:3" ? "landscape_4_3" :
-                      aspectRatio === "3:4" ? "portrait_4_3" : "square",
-          num_images: 1,
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (update.status === "IN_PROGRESS") {
-            console.log("Flux generation in progress...");
-          }
-        },
+      const result = await traceExternalAPI("fal-ai", "flux/schnell", "POST", async (span) => {
+        span.setAttributes({ 
+          "ai.model": "flux-schnell",
+          "ai.prompt_length": prompt.length,
+          "ai.aspect_ratio": aspectRatio,
+        });
+        
+        return fal.subscribe("fal-ai/flux/schnell", {
+          input: {
+            prompt,
+            image_size: aspectRatio === "16:9" ? "landscape_16_9" : 
+                        aspectRatio === "9:16" ? "portrait_16_9" : 
+                        aspectRatio === "4:3" ? "landscape_4_3" :
+                        aspectRatio === "3:4" ? "portrait_4_3" : "square",
+            num_images: 1,
+          },
+          logs: true,
+          onQueueUpdate: (update) => {
+            if (update.status === "IN_PROGRESS") {
+              console.log("Flux generation in progress...");
+            }
+          },
+        });
       });
       
       const images = (result.data as any)?.images || [];

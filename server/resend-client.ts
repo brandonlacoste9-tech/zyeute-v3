@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { traceExternalAPI } from './tracer.js';
 
 // Simple direct API key approach - no Replit Connectors needed
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -39,18 +40,32 @@ export async function sendEmail({
 
     const { client, fromEmail } = await getResendClient();
 
-    const response = await client.emails.send({
-      from: fromEmail,
-      to: [to],
-      subject,
-      html
-    });
+    return await traceExternalAPI("resend", "emails.send", "POST", async (span) => {
+      span.setAttributes({
+        "email.to": to,
+        "email.subject": subject,
+        "email.from": fromEmail,
+      });
 
-    console.log('✅ Email sent successfully:', response.data?.id);
-    return {
-      success: true,
-      messageId: response.data?.id
-    };
+      const response = await client.emails.send({
+        from: fromEmail,
+        to: [to],
+        subject,
+        html
+      });
+
+      const messageId = response.data?.id;
+      span.setAttributes({
+        "email.message_id": messageId || "unknown",
+        "email.success": true,
+      });
+
+      console.log('✅ Email sent successfully:', messageId);
+      return {
+        success: true,
+        messageId
+      };
+    });
   } catch (error: any) {
     console.error('❌ Failed to send email:', error);
     return {

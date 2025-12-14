@@ -79,8 +79,17 @@ export async function traced<T>(
   fn: (span: Span) => Promise<T>
 ): Promise<T> {
   if (!isTracingEnabled) {
-    // If tracing is disabled, just execute the function
-    return fn({ recordException: () => {}, setStatus: () => {}, end: () => {} } as any);
+    // If tracing is disabled, just execute the function with a mock span
+    const mockSpan = {
+      recordException: () => {},
+      setStatus: () => {},
+      setAttributes: () => {},
+      setAttribute: () => {},
+      addEvent: () => {},
+      end: () => {},
+      spanContext: () => ({ traceId: '', spanId: '', traceFlags: 0 }),
+    } as any;
+    return fn(mockSpan);
   }
 
   return tracer.startActiveSpan(name, async (span) => {

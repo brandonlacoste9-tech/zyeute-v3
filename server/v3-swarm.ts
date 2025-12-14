@@ -9,6 +9,7 @@
  */
 
 import OpenAI from "openai";
+import { traceExternalAPI, addSpanAttributes } from "./tracer.js";
 
 // Constants for production reliability
 const MAX_RETRIES = 3;
@@ -231,31 +232,46 @@ async function callV3(systemPrompt: string, userMessage: string, parseJson = tru
   }
   
   // Use retry wrapper for resilience
-  return withRetry(async () => {
-    const completion = await deepseek.chat.completions.create({
-      model: "deepseek-chat",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userMessage }
-      ],
-      max_tokens: 1024,
-      temperature: 0.7,
+  return traceExternalAPI("deepseek", "chat.completions", "POST", async (span) => {
+    span.setAttributes({
+      "ai.model": "deepseek-chat",
+      "ai.system_prompt_length": systemPrompt.length,
+      "ai.user_message_length": userMessage.length,
+      "ai.parse_json": parseJson,
     });
 
-    const content = completion.choices[0]?.message?.content || "";
-    
-    if (parseJson) {
-      try {
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          return JSON.parse(jsonMatch[0]);
+    return withRetry(async () => {
+      const completion = await deepseek.chat.completions.create({
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage }
+        ],
+        max_tokens: 1024,
+        temperature: 0.7,
+      });
+
+      const content = completion.choices[0]?.message?.content || "";
+      
+      span.setAttributes({
+        "ai.response_length": content.length,
+        "ai.finish_reason": completion.choices[0]?.finish_reason || "unknown",
+      });
+      
+      if (parseJson) {
+        try {
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+          }
+        } catch {
+          console.error("Failed to parse V3 JSON response:", content);
+          span.setAttributes({ "ai.json_parse_error": true });
         }
-      } catch {
-        console.error("Failed to parse V3 JSON response:", content);
       }
-    }
-    
-    return content;
+      
+      return content;
+    });
   });
 }
 
