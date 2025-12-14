@@ -26,9 +26,10 @@ const AuthCallback: React.FC = () => {
     authCallbackLogger.debug('Current URL:', window.location.href);
     authCallbackLogger.debug('Hash:', window.location.hash);
     authCallbackLogger.debug('Search params:', window.location.search);
-    
+
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let hasNavigated = false;
+    let authSubscription: { unsubscribe: () => void } | null = null;
 
     const exchangeCode = async () => {
       // Check for OAuth error in URL parameters
@@ -91,11 +92,11 @@ const AuthCallback: React.FC = () => {
       authCallbackLogger.debug('No code param found, checking for hash-based OAuth...');
       authCallbackLogger.debug('Hash contains access_token:', window.location.hash.includes('access_token'));
       authCallbackLogger.debug('Hash contains type:', window.location.hash.includes('type='));
-      
+
       // Listen for auth state changes to know when session is ready
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         authCallbackLogger.debug('🔔 Auth state change:', event, session ? 'has session' : 'no session');
-        
+
         if (event === 'SIGNED_IN' && session) {
           authCallbackLogger.debug('✅ Signed in via hash-based OAuth:', {
             user: session.user?.email,
@@ -103,22 +104,25 @@ const AuthCallback: React.FC = () => {
           });
           hasNavigated = true;
           if (timeoutId) clearTimeout(timeoutId);
-          subscription.unsubscribe();
+          if (authSubscription) authSubscription.unsubscribe();
           navigate('/', { replace: true });
         } else if (event === 'SIGNED_OUT') {
           authCallbackLogger.debug('Signed out');
           hasNavigated = true;
           if (timeoutId) clearTimeout(timeoutId);
-          subscription.unsubscribe();
+          if (authSubscription) authSubscription.unsubscribe();
           navigate('/login', { replace: true });
         } else if (event === 'TOKEN_REFRESHED' && session) {
           authCallbackLogger.debug('Token refreshed');
           hasNavigated = true;
           if (timeoutId) clearTimeout(timeoutId);
-          subscription.unsubscribe();
+          if (authSubscription) authSubscription.unsubscribe();
           navigate('/', { replace: true });
         }
       });
+
+      // Store subscription for cleanup
+      authSubscription = subscription;
 
       // Also check current session immediately in case auth already completed
       const checkSession = async () => {
@@ -138,34 +142,34 @@ const AuthCallback: React.FC = () => {
             });
             hasNavigated = true;
             if (timeoutId) clearTimeout(timeoutId);
-            subscription.unsubscribe();
+            if (authSubscription) authSubscription.unsubscribe();
             navigate('/', { replace: true });
             return;
           }
-          
+
           authCallbackLogger.debug('⏳ No session yet, waiting for OAuth token exchange...');
-          
+
           // If no session yet, wait a bit for OAuth token exchange to complete
           timeoutId = setTimeout(async () => {
             if (hasNavigated) {
               authCallbackLogger.debug('Already navigated, skipping retry');
               return;
             }
-            
+
             authCallbackLogger.debug('🔄 Retrying session check...');
             try {
               const { data: { session: retrySession }, error: retryError } = await supabase.auth.getSession();
-              
+
               if (retryError) {
                 authCallbackLogger.error('❌ Retry session error:', retryError);
               }
-              
+
               if (retrySession) {
                 authCallbackLogger.debug('✅ Session found on retry:', {
                   user: retrySession.user?.email,
                 });
                 hasNavigated = true;
-                subscription.unsubscribe();
+                if (authSubscription) authSubscription.unsubscribe();
                 navigate('/', { replace: true });
               } else {
                 // Still no session after delay - likely a failed OAuth flow
@@ -178,13 +182,13 @@ const AuthCallback: React.FC = () => {
                 authCallbackLogger.warn('  2. Google OAuth redirect URI mismatch');
                 authCallbackLogger.warn('  3. Session not being stored properly');
                 hasNavigated = true;
-                subscription.unsubscribe();
+                if (authSubscription) authSubscription.unsubscribe();
                 navigate('/login?error=no_session', { replace: true });
               }
             } catch (error) {
               authCallbackLogger.error('❌ Auth callback retry error:', error);
               hasNavigated = true;
-              subscription.unsubscribe();
+              if (authSubscription) authSubscription.unsubscribe();
               navigate('/login?error=callback_failed', { replace: true });
             }
           }, 3000); // Wait 3 seconds for OAuth token exchange
@@ -192,21 +196,25 @@ const AuthCallback: React.FC = () => {
           authCallbackLogger.error('❌ Auth callback error:', error);
           hasNavigated = true;
           if (timeoutId) clearTimeout(timeoutId);
-          subscription.unsubscribe();
+          if (authSubscription) authSubscription.unsubscribe();
           navigate('/login?error=callback_error', { replace: true });
         }
       };
 
       checkSession();
-
-      // Cleanup subscription and timeout on unmount
-      return () => {
-        subscription.unsubscribe();
-        if (timeoutId) clearTimeout(timeoutId);
-      };
     };
 
     exchangeCode();
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [navigate, searchParams]);
 
   return <LoadingScreen message="Connexion en cours..." />;
