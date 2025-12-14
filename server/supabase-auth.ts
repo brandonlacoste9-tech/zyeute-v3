@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { traceSupabase } from "./tracer.js";
 
 if (!process.env.VITE_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
   console.warn("⚠️ Supabase environment variables missing. JWT Auth will fail.");
@@ -21,17 +22,28 @@ const supabaseAdmin = createClient(
  * This is stateless and serverless-friendly.
  */
 export async function verifyAuthToken(token: string): Promise<string | null> {
-  try {
-    const { data, error } = await supabaseAdmin.auth.getUser(token);
+  return traceSupabase("auth.getUser", { "auth.method": "jwt_verification" }, async (span) => {
+    try {
+      const { data, error } = await supabaseAdmin.auth.getUser(token);
 
-    if (error || !data.user) {
-      if (error) console.error("JWT Verification failed:", error.message);
+      if (error || !data.user) {
+        if (error) {
+          console.error("JWT Verification failed:", error.message);
+          span.setAttributes({ "auth.error": error.message });
+        }
+        span.setAttributes({ "auth.success": false });
+        return null;
+      }
+
+      span.setAttributes({ 
+        "auth.success": true,
+        "auth.user_id": data.user.id,
+      });
+      return data.user.id;
+    } catch (err) {
+      console.error("Unexpected auth error:", err);
+      span.setAttributes({ "auth.success": false });
       return null;
     }
-
-    return data.user.id;
-  } catch (err) {
-    console.error("Unexpected auth error:", err);
-    return null;
-  }
+  });
 }
