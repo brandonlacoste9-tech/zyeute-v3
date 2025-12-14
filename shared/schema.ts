@@ -37,8 +37,8 @@ export const sessions = pgTable(
 );
 
 // Users Table - supports both password auth and OAuth (Replit Auth)
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
+export const users = pgTable("user_profiles", {
+  id: uuid("id").primaryKey(),
   replitId: varchar("replit_id", { length: 50 }).unique(), // Replit OAuth sub claim
   username: varchar("username", { length: 50 }).notNull().unique(),
   email: varchar("email", { length: 255 }).unique(), // Made optional for OAuth users
