@@ -28,7 +28,8 @@ export const Login: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           if (data.user) {
-            navigate('/');
+            // Use window.location to bypass AnimatePresence and prevent DOM manipulation errors
+            window.location.href = '/';
           }
         }
       } catch (err) {
@@ -50,14 +51,15 @@ export const Login: React.FC = () => {
         credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Erreur de connexion');
       }
-      
-      navigate('/');
+
+      // Use window.location to bypass AnimatePresence and prevent DOM manipulation errors
+      window.location.href = '/';
     } catch (err: any) {
       setError(err.message || 'Erreur de connexion');
     } finally {

@@ -48,18 +48,19 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!currentUserId) return;
 
     try {
+      // Simpler query without foreign key hints - let PostgREST infer relationships
       const { data, error } = await supabase
         .from('notifications')
-        .select(`
-          *,
-          actor:user_profiles!actor_id(*),
-          post:posts!post_id(*)
-        `)
+        .select('*')
         .eq('user_id', currentUserId)
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        // Log error but don't throw - notifications are non-critical
+        notificationContextLogger.error('Error fetching notifications:', error);
+        return;
+      }
 
       if (data) {
         setNotifications(data);
