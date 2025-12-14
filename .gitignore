@@ -6,3 +6,6 @@ vite.config.ts.*
 *.tar.gz.env
 
 .vercel
+
+# Generated email templates (compiled from .tsx)
+server/email-templates.js

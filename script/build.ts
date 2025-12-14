@@ -46,6 +46,7 @@ async function buildAll() {
   ];
   const externals = allDeps.filter((dep) => !allowlist.includes(dep));
 
+  // Build server for local development
   await esbuild({
     entryPoints: ["server/index.ts"],
     platform: "node",
@@ -57,6 +58,19 @@ async function buildAll() {
     },
     minify: true,
     external: externals,
+    logLevel: "info",
+  });
+
+  // Pre-compile email-templates.tsx to .js for Vercel
+  console.log("Compiling email-templates.tsx...");
+  await esbuild({
+    entryPoints: ["server/email-templates.tsx"],
+    platform: "node",
+    bundle: false, // Don't bundle, just transpile
+    format: "esm",
+    outfile: "server/email-templates.js",
+    jsx: "automatic",
+    jsxImportSource: "react",
     logLevel: "info",
   });
 }
