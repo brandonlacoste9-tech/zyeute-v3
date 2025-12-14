@@ -1,8 +1,8 @@
 /**
  * Seed script to populate the database with sample data
  */
-import { db } from './storage';
-import { users, posts, follows, stories } from '@shared/schema';
+import { db } from './storage.js';
+import { users, posts, follows, stories } from '../shared/schema.js';
 import bcrypt from 'bcryptjs';
 
 async function seed() {
