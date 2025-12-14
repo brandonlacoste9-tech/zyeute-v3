@@ -41,7 +41,6 @@ export const users = pgTable("user_profiles", {
   id: uuid("id").primaryKey(),
   username: varchar("username", { length: 50 }).notNull().unique(),
   email: varchar("email", { length: 255 }).unique(), // Made optional for OAuth users
-  password: text("password"), // Optional for OAuth users
   displayName: varchar("display_name", { length: 100 }),
   bio: text("bio"),
   avatarUrl: text("avatar_url"),
