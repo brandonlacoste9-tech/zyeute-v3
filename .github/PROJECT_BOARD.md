@@ -127,11 +127,12 @@ gh project create --title "Zyeuté V3 Bug & Feature Tracker" \
   --body "Comprehensive tracking for bugs, features, and enhancements"
 
 # Add issues to project (adjust issue numbers as needed)
+# Replace {PROJECT_NUMBER} with your actual project number (e.g., 1, 2, 3)
 gh issue list --label bug --json number --jq '.[].number' | \
-  xargs -I {} gh project item-add [PROJECT_NUMBER] --owner brandonlacoste9-tech --repo zyeute-v3 --issue {}
+  xargs -I {} gh project item-add {PROJECT_NUMBER} --owner brandonlacoste9-tech --repo zyeute-v3 --issue {}
 
 gh issue list --label feature --json number --jq '.[].number' | \
-  xargs -I {} gh project item-add [PROJECT_NUMBER] --owner brandonlacoste9-tech --repo zyeute-v3 --issue {}
+  xargs -I {} gh project item-add {PROJECT_NUMBER} --owner brandonlacoste9-tech --repo zyeute-v3 --issue {}
 ```
 
 ---

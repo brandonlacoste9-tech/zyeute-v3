@@ -19,7 +19,8 @@ Zyeuté V3 is Quebec's premier French social media platform. Whether you're fixi
 
 ```bash
 # Fork and clone the repository
-git clone https://github.com/YOUR_USERNAME/zyeute-v3.git
+# Replace {YOUR_GITHUB_USERNAME} with your actual GitHub username
+git clone https://github.com/{YOUR_GITHUB_USERNAME}/zyeute-v3.git
 cd zyeute-v3
 
 # Install dependencies

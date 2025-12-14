@@ -1,11 +1,11 @@
 blank_issues_enabled: true
 contact_links:
   - name: 💬 Discussions
-    url: https://github.com/brandonlacoste9-tech/zyeute-v3/discussions
+    url: https://github.com/$GITHUB_REPOSITORY_OWNER/zyeute-v3/discussions
     about: Ask questions and discuss ideas with the community
   - name: 📖 Documentation
-    url: https://github.com/brandonlacoste9-tech/zyeute-v3/blob/main/README.md
+    url: ../../blob/main/README.md
     about: Read the project documentation
   - name: 🚀 Deployment Guide
-    url: https://github.com/brandonlacoste9-tech/zyeute-v3/blob/main/DEPLOYMENT_FIX.md
+    url: ../../blob/main/DEPLOYMENT_FIX.md
     about: Check deployment and environment setup guides

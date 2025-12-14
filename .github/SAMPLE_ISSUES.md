@@ -40,7 +40,7 @@ When users attempt to make a payment for virtual currency, the Stripe.js library
 **Steps to Reproduce:**
 1. Navigate to the virtual gifts section
 2. Select a gift package to purchase
-3. Click 'Buy Now' to open the payment modal
+3. Click \"Buy Now\" to open the payment modal
 4. Observe that sometimes the Stripe payment form doesn't render
 
 **Expected Behavior:** Stripe payment form should always load and display properly
@@ -94,8 +94,8 @@ When users create posts containing certain special characters (emojis, accented 
 
 **Steps to Reproduce:**
 1. Log in to the application
-2. Create a new post with text: 'C'est génial! 🎉 À bientôt'
-3. Click 'Post' button
+2. Create a new post with text: \"C'est génial! 🎉 À bientôt\"
+3. Click \"Post\" button
 4. Observe 422 error in network console
 
 **Expected Behavior:** Post should be created successfully with all Unicode characters
