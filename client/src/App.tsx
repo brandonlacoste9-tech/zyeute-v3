@@ -16,6 +16,7 @@ import { TiGuy } from '@/components/features/TiGuy';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { AchievementListener } from '@/components/gamification/AchievementModal';
 import { ProtectedAdminRoute } from '@/components/auth/ProtectedAdminRoute';
+import { GUEST_SESSION_DURATION, GUEST_MODE_KEY, GUEST_TIMESTAMP_KEY, GUEST_VIEWS_KEY } from '@/lib/constants';
 
 // Core Pages - Eagerly loaded (frequently accessed)
 import Feed from '@/pages/Feed';
@@ -107,12 +108,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
         }
         
         // Check for guest mode
-        const guestMode = localStorage.getItem('zyeute_guest_mode');
-        const guestTimestamp = localStorage.getItem('zyeute_guest_timestamp');
+        const guestMode = localStorage.getItem(GUEST_MODE_KEY);
+        const guestTimestamp = localStorage.getItem(GUEST_TIMESTAMP_KEY);
         
         if (guestMode === 'true' && guestTimestamp) {
           const age = Date.now() - parseInt(guestTimestamp, 10);
-          const GUEST_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
           
           if (age < GUEST_SESSION_DURATION) {
             // Valid guest session
@@ -120,9 +120,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
             return;
           } else {
             // Guest session expired - clear localStorage
-            localStorage.removeItem('zyeute_guest_mode');
-            localStorage.removeItem('zyeute_guest_timestamp');
-            localStorage.removeItem('zyeute_guest_views_count');
+            localStorage.removeItem(GUEST_MODE_KEY);
+            localStorage.removeItem(GUEST_TIMESTAMP_KEY);
+            localStorage.removeItem(GUEST_VIEWS_KEY);
           }
         }
         

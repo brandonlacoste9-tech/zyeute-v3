@@ -8,6 +8,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { logger } from '../lib/logger';
 import copy from '../lib/copy';
+import { GUEST_MODE_KEY, GUEST_TIMESTAMP_KEY, GUEST_VIEWS_KEY } from '../lib/constants';
 
 const loginLogger = logger.withContext('Login');
 
@@ -44,9 +45,9 @@ export const Login: React.FC = () => {
     loginLogger.info('🎭 Guest login initiated');
     
     // Set guest mode flags in localStorage
-    localStorage.setItem('zyeute_guest_mode', 'true');
-    localStorage.setItem('zyeute_guest_timestamp', Date.now().toString());
-    localStorage.setItem('zyeute_guest_views_count', '0');
+    localStorage.setItem(GUEST_MODE_KEY, 'true');
+    localStorage.setItem(GUEST_TIMESTAMP_KEY, Date.now().toString());
+    localStorage.setItem(GUEST_VIEWS_KEY, '0');
     
     // Simulate a short delay for UX, then navigate
     setTimeout(() => {
@@ -74,9 +75,9 @@ export const Login: React.FC = () => {
       }
 
       // Clear guest mode on successful login
-      localStorage.removeItem('zyeute_guest_mode');
-      localStorage.removeItem('zyeute_guest_timestamp');
-      localStorage.removeItem('zyeute_guest_views_count');
+      localStorage.removeItem(GUEST_MODE_KEY);
+      localStorage.removeItem(GUEST_TIMESTAMP_KEY);
+      localStorage.removeItem(GUEST_VIEWS_KEY);
 
       window.location.href = '/';
     } catch (err: any) {

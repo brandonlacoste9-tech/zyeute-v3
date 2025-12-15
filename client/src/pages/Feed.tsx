@@ -53,7 +53,7 @@ export const Feed: React.FC = () => {
   // Increment guest view counter on page load
   React.useEffect(() => {
     incrementViews();
-  }, []);
+  }, [incrementViews]);
 
   // Fetch current user
   React.useEffect(() => {
