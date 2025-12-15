@@ -100,8 +100,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     const checkAuth = async () => {
       try {
         // Check for Supabase authenticated user
-        const { getCurrentUser } = await import('@/lib/supabase');
-        const user = await getCurrentUser();
+        const { supabase } = await import('./lib/supabase');
+        const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
           setIsAuthenticated(true);
