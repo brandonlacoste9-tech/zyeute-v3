@@ -19,8 +19,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 os.environ['STRIPE_SECRET_KEY'] = 'sk_test_mock_key'
 os.environ['STRIPE_WEBHOOK_SECRET'] = 'whsec_mock_secret'
 os.environ['VITE_SUPABASE_URL'] = 'https://mock.supabase.co'
-# Use a valid JWT format for mock key (3 parts separated by dots)
-os.environ['SUPABASE_SERVICE_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vY2siLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjQwOTk1MjAwLCJleHAiOjE5NTY1NzEyMDB9.mock_signature_part'
+# Use a valid JWT format for mock key (3 parts separated by dots, completely fake)
+os.environ['SUPABASE_SERVICE_KEY'] = 'aGVhZGVy.cGF5bG9hZA.c2lnbmF0dXJl'
 
 # ═══════════════════════════════════════════════════════════════
 # TEST DATA

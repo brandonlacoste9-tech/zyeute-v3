@@ -11,7 +11,7 @@ import sys
 import json
 import asyncio
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 from dotenv import load_dotenv
 
 try:
@@ -190,7 +190,9 @@ def check_stripe() -> Dict[str, Any]:
 # MAIN HEALTH CHECK
 # ═══════════════════════════════════════════════════════════════
 
-async def run_health_checks() -> List[Dict[str, Any]]:
+from typing import Tuple
+
+async def run_health_checks() -> Tuple[List[Dict[str, Any]], int]:
     """Run all health checks"""
     print("\n" + "="*70)
     print("🐝 COLONY OS - HEALTH CHECK")

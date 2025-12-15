@@ -93,6 +93,9 @@ if lsof -Pi :8001 -sTCP:LISTEN -t >/dev/null 2>&1; then
     fi
 fi
 
+# Ensure logs directory exists
+mkdir -p logs
+
 # Start Finance Bee in background
 echo "Starting Finance Bee on port 8001..."
 nohup python3 bees/finance_bee.py > logs/finance_bee.log 2>&1 &

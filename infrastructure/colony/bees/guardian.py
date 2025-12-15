@@ -55,9 +55,6 @@ if not all([SUPABASE_URL, SUPABASE_SERVICE_KEY]):
 # Initialize Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-# FastAPI app
-app = FastAPI(title="Guardian Bee", version="2.0.0")
-
 # ═══════════════════════════════════════════════════════════════
 # THREAT DETECTION PATTERNS
 # ═══════════════════════════════════════════════════════════════
@@ -327,11 +324,20 @@ async def root():
 # STARTUP EVENT
 # ═══════════════════════════════════════════════════════════════
 
-@app.on_event("startup")
-async def startup_event():
-    """Start background monitoring on app startup"""
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app_instance: FastAPI):
+    """Lifespan context manager for startup and shutdown"""
+    # Startup
     asyncio.create_task(monitor_logs())
     logger.info("✅ Guardian Bee background monitoring started")
+    yield
+    # Shutdown
+    logger.info("🛑 Guardian Bee shutting down...")
+
+# FastAPI app with lifespan
+app = FastAPI(title="Guardian Bee", version="2.0.0", lifespan=lifespan)
 
 
 # ═══════════════════════════════════════════════════════════════
