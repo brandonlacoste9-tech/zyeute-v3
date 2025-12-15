@@ -12,12 +12,11 @@ stripe==11.2.0
 
 # Supabase Client
 supabase==2.10.0
-postgrest==0.17.3
 
 # Async & Scheduling
-httpx==0.28.1
-aiohttp==3.11.11
-apscheduler==3.10.4
+httpx>=0.26,<0.28
+aiohttp>=3.9
+apscheduler>=3.10
 
 # Utilities
 python-dotenv==1.0.1
