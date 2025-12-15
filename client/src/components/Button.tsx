@@ -99,7 +99,7 @@ export const PlayButton: React.FC<{ onClick?: () => void; size?: number }> = ({
 }) => (
   <button
     onClick={onClick}
-    className="absolute inset-0 flex items-center justify-center group"
+    className="absolute inset-0 flex items-center justify-center group focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-inset"
     aria-label="Play video"
   >
     <div
@@ -129,6 +129,7 @@ export const FireButton: React.FC<{
     onClick={onClick}
     className={cn(
       'text-2xl transition-all duration-200',
+      'focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-1 rounded-full',
       active
         ? 'scale-125 drop-shadow-[0_0_8px_rgba(255,165,0,0.8)] animate-pulse'
         : 'grayscale opacity-40 hover:grayscale-0 hover:opacity-100 hover:scale-110'
