@@ -2,6 +2,7 @@
  * Login Page - Luxury Quebec Heritage Design
  * Beaver leather texture with gold fleur-de-lys
  * Includes Guest Access "Backdoor"
+ * FIXED: Added proper error handling, debugging, and event binding
  */
 
 import React from 'react';
@@ -20,6 +21,7 @@ export const Login: React.FC = () => {
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [debugMode] = React.useState(true); // Enable debugging
 
   // Check if already logged in
   React.useEffect(() => {
@@ -40,31 +42,51 @@ export const Login: React.FC = () => {
   }, [navigate]);
 
   // ✅ Guest Login Handler - Sets 24h session
-  const handleGuestLogin = (e: React.MouseEvent) => {
+  const handleGuestLogin = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault(); // Stop form submission
+    e.stopPropagation(); // Stop event bubbling
+    
+    if (debugMode) console.log('🎭 [GUEST LOGIN] Button clicked');
     setIsLoading(true);
     loginLogger.info('🎭 Guest login initiated');
     
-    // Set guest mode flags in localStorage
-    localStorage.setItem(GUEST_MODE_KEY, 'true');
-    localStorage.setItem(GUEST_TIMESTAMP_KEY, Date.now().toString());
-    localStorage.setItem(GUEST_VIEWS_KEY, '0');
-    
-    // Simulate a short delay for UX, then navigate
-    setTimeout(() => {
+    try {
+      // Set guest mode flags in localStorage
+      localStorage.setItem(GUEST_MODE_KEY, 'true');
+      localStorage.setItem(GUEST_TIMESTAMP_KEY, Date.now().toString());
+      localStorage.setItem(GUEST_VIEWS_KEY, '0');
+      
+      if (debugMode) console.log('✅ Guest flags set in localStorage');
+      
+      // Simulate a short delay for UX, then navigate
+      setTimeout(() => {
+        if (debugMode) console.log('🎭 Redirecting to home...');
         window.location.href = '/';
-    }, 800);
-  };
+      }, 800);
+    } catch (err: any) {
+      if (debugMode) console.error('❌ [GUEST LOGIN ERROR]', err);
+      loginLogger.error('Guest login error:', err);
+      setError(err.message || 'Erreur de connexion invité');
+      setIsLoading(false);
+    }
+  }, [debugMode]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = React.useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    if (debugMode) console.log('📝 [LOGIN] Form submitted with email:', email);
     setError('');
     setIsLoading(true);
 
     try {
+      if (debugMode) console.log('🔐 [LOGIN] Attempting Supabase auth...');
+      
       // ✅ DIRECT CLIENT-SIDE AUTH - No server proxy
       const { signIn } = await import('../lib/supabase');
       const { data, error } = await signIn(email, password);
+
+      if (debugMode) console.log('📊 [LOGIN] Auth response:', { data, error });
 
       if (error) {
         loginLogger.error('❌ Sign in error:', error.message);
@@ -72,10 +94,11 @@ export const Login: React.FC = () => {
       }
 
       if (!data.user) {
-        throw new Error('Erreur de connexion');
+        throw new Error('Erreur de connexion - pas d\'utilisateur reçu');
       }
 
       loginLogger.info('✅ User signed in:', data.user.email);
+      if (debugMode) console.log('✅ [LOGIN SUCCESS] User:', data.user.email);
 
       // Clear guest mode on successful login
       localStorage.removeItem(GUEST_MODE_KEY);
@@ -83,32 +106,46 @@ export const Login: React.FC = () => {
       localStorage.removeItem(GUEST_VIEWS_KEY);
 
       // Redirect to home
+      if (debugMode) console.log('➡️ [LOGIN] Redirecting to home...');
       window.location.href = '/';
     } catch (err: any) {
-      setError(err.message || 'Erreur de connexion');
-    } finally {
+      if (debugMode) console.error('❌ [LOGIN CATCH ERROR]', err);
+      const errorMsg = err.message || 'Erreur de connexion';
+      loginLogger.error('Login error:', errorMsg);
+      setError(errorMsg);
       setIsLoading(false);
     }
-  };
+  }, [email, password, debugMode]);
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = React.useCallback(async () => {
+    if (debugMode) console.log('🔵 [GOOGLE] Starting OAuth...');
     setIsLoading(true);
     setError('');
     try {
       const { signInWithGoogle } = await import('../lib/supabase');
       const { data, error } = await signInWithGoogle();
 
+      if (debugMode) console.log('🔵 [GOOGLE] Response:', { data, error });
+
       if (error) {
         loginLogger.error('❌ Google OAuth error:', error.message);
         throw error;
       }
       loginLogger.info('✅ Google OAuth initiated:', data);
+      if (debugMode) console.log('✅ [GOOGLE] OAuth initiated');
     } catch (err: any) {
       loginLogger.error('❌ Google sign-in error:', err);
-      setError(err?.message || 'Erreur de connexion avec Google');
+      if (debugMode) console.error('❌ [GOOGLE ERROR]', err);
+      const errorMsg = err?.message || 'Erreur de connexion avec Google';
+      setError(errorMsg);
       setIsLoading(false);
     }
-  };
+  }, [debugMode]);
+
+  // Debug: Log render
+  React.useEffect(() => {
+    if (debugMode) console.log('📲 [LOGIN PAGE] Rendered', { isLoading, error });
+  }, [isLoading, error, debugMode]);
 
   return (
     <div 
@@ -236,6 +273,7 @@ export const Login: React.FC = () => {
           {error && (
             <div className="rounded-xl p-4 mb-6" style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)' }}>
               <p className="text-red-400 text-sm">{error}</p>
+              {debugMode && <p className="text-red-300 text-xs mt-2">Debug: {error}</p>}
             </div>
           )}
 
@@ -246,6 +284,9 @@ export const Login: React.FC = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={(e) => {
+                  if (debugMode) console.log('Email input blurred:', e.target.value);
+                }}
                 required
                 placeholder="ton@email.com"
                 className="w-full rounded-xl px-4 py-4 text-white placeholder-white/30 focus:outline-none transition-all duration-300"
@@ -276,7 +317,10 @@ export const Login: React.FC = () => {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => {
+                    if (debugMode) console.log('Toggle password visibility');
+                    setShowPassword(!showPassword);
+                  }}
                   style={{
                     position: 'absolute',
                     right: '12px',
@@ -315,10 +359,13 @@ export const Login: React.FC = () => {
 
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 relative overflow-hidden group press-effect hover-glow"
+              disabled={isLoading || !email || !password}
+              onClick={(e) => {
+                if (debugMode) console.log('Login button clicked');
+              }}
+              className="w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 relative overflow-hidden group press-effect hover-glow disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 50%, #DAA520 100%)',
+                background: isLoading ? '#DAA520' : 'linear-gradient(135deg, #FFD700 0%, #FFC125 50%, #DAA520 100%)',
                 color: '#1a1a1a',
                 boxShadow: '0 4px 20px rgba(255,191,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
               }}
@@ -341,9 +388,10 @@ export const Login: React.FC = () => {
           <div className="space-y-3">
             {/* Google Button */}
             <button
+              type="button"
               onClick={handleGoogleSignIn}
               disabled={isLoading}
-              className="w-full py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 group press-effect hover-glow"
+              className="w-full py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 group press-effect hover-glow disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 background: 'rgba(0,0,0,0.3)',
                 border: '2px solid rgba(255,191,0,0.3)',
@@ -354,24 +402,24 @@ export const Login: React.FC = () => {
               {copy.auth.continueGoogle}
             </button>
 
-            {/* ✅ NEW: Guest Login Button */}
+            {/* ✅ Guest Login Button */}
             <button
               type="button" 
               onClick={handleGuestLogin}
               disabled={isLoading}
-              className="w-full py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 group press-effect hover-glow"
+              className="w-full py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 group press-effect hover-glow disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.2)',
                 color: '#E8DCC4',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)';
-                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.5)';
+                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.1)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.2)';
+                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
               }}
             >
               <span className="text-xl">🎭</span>
