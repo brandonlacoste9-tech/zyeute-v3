@@ -79,15 +79,17 @@ export const GoldButton: React.FC<GoldButtonProps> = ({
       disabled={disabled || isLoading}
       className={cn(baseClasses, isInverse ? inverseClasses : primaryClasses)}
       aria-label={ariaLabel}
+      aria-busy={isLoading}
       {...rest}
     >
       {isLoading ? (
-        <span className="inline-flex items-center gap-2">
+        <span className="inline-flex items-center gap-2" aria-live="polite">
           <svg
             className="animate-spin h-4 w-4"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <circle
               className="opacity-25"
