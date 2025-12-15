@@ -24,6 +24,8 @@ import Profile from '@/pages/Profile';
 import Explore from '@/pages/Explore';
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
+import Landing from '@/pages/Landing';
+import Home from '@/pages/Home';
 import AuthCallback from '@/pages/AuthCallback';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
@@ -185,6 +187,8 @@ function App() {
                         <PageTransition>
                           <Routes>
                         {/* Public Routes */}
+                        <Route path="/" element={<Home />} />
+                        <Route path="/landing" element={<Landing />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/signup" element={<Signup />} />
                         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -193,7 +197,7 @@ function App() {
 
                         {/* Protected Routes - with granular error boundaries */}
                         <Route
-                          path="/"
+                          path="/feed"
                           element={
                             <ProtectedRoute>
                               <ErrorBoundary>
