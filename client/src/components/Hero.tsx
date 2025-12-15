@@ -33,29 +33,34 @@ export const Hero: React.FC = () => {
         {/* CTA Section - Vertical Stack for Clear Hierarchy */}
         <div className="flex flex-col items-center gap-4 mb-8">
           {/* Primary CTA - Large, prominent */}
-          <Link
-            to="/signup"
-            className={cn(
-              'group inline-flex items-center justify-center gap-2',
-              'px-8 py-4 rounded-xl font-bold text-lg',
-              'bg-gold-500 text-black',
-              'hover:bg-gold-400 hover:shadow-lg hover:shadow-gold-500/40',
-              'active:bg-gold-600 active:scale-95',
-              'transition-all duration-200 ease-in-out',
-              'shadow-md shadow-gold-500/30',
-              'focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-black',
-              'min-w-[280px]'
-            )}
-            aria-label="Commencer gratuitement sans carte de crédit"
-          >
-            <span>Commencer Gratuitement</span>
-            <span className="text-xl group-hover:translate-x-1 transition-transform" aria-hidden="true">
-              →
-            </span>
-            <span className="block text-xs font-normal opacity-90 absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap">
+          <div className="flex flex-col items-center gap-2">
+            <Link
+              to="/signup"
+              className={cn(
+                'group inline-flex items-center justify-center gap-2',
+                'px-8 py-4 rounded-xl font-bold text-lg',
+                'bg-gold-500 text-black',
+                'hover:bg-gold-400 hover:shadow-lg hover:shadow-gold-500/40',
+                'active:bg-gold-600 active:scale-95',
+                'transition-all duration-200 ease-in-out',
+                'shadow-md shadow-gold-500/30',
+                'focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-black',
+                'min-w-[280px]'
+              )}
+              aria-label="Commencer gratuitement sans carte de crédit"
+            >
+              <span>Commencer Gratuitement</span>
+              <span className="text-xl group-hover:translate-x-1 transition-transform" aria-hidden="true">
+                →
+              </span>
+            </Link>
+            <span 
+              className="text-xs text-stone-400 font-normal"
+              aria-label="Aucune carte de crédit requise"
+            >
               Aucune Carte Requise
             </span>
-          </Link>
+          </div>
           
           {/* Secondary CTA - De-emphasized */}
           <Link
@@ -78,20 +83,19 @@ export const Hero: React.FC = () => {
 
         {/* Feature Highlights */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 text-sm">
-          <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-leather-900/30 border border-gold-500/10">
-            <div className="text-3xl" aria-hidden="true">🦫</div>
-            <p className="text-stone-300 font-medium">100% Québécois</p>
-          </div>
-          
-          <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-leather-900/30 border border-gold-500/10">
-            <div className="text-3xl" aria-hidden="true">⚜️</div>
-            <p className="text-stone-300 font-medium">Créé avec fierté</p>
-          </div>
-          
-          <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-leather-900/30 border border-gold-500/10">
-            <div className="text-3xl" aria-hidden="true">✨</div>
-            <p className="text-stone-300 font-medium">Gratuit pour tous</p>
-          </div>
+          {[
+            { emoji: '🦫', text: '100% Québécois' },
+            { emoji: '⚜️', text: 'Créé avec fierté' },
+            { emoji: '✨', text: 'Gratuit pour tous' },
+          ].map((feature, index) => (
+            <div 
+              key={index}
+              className="flex flex-col items-center gap-2 p-4 rounded-lg bg-leather-900/30 border border-gold-500/10"
+            >
+              <div className="text-3xl" aria-hidden="true">{feature.emoji}</div>
+              <p className="text-stone-300 font-medium">{feature.text}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

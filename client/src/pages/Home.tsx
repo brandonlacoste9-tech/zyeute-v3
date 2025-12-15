@@ -45,7 +45,9 @@ const Home: React.FC = () => {
         
         // No valid auth or guest session
         setIsAuthenticated(false);
-      } catch {
+      } catch (error) {
+        // Log error for debugging while gracefully handling auth failures
+        console.error('Authentication check failed:', error);
         setIsAuthenticated(false);
       }
     };
