@@ -86,7 +86,7 @@
       "rootCause": {
         "file": "/src/services/stripeService.ts",
         "line": "8",
-        "description": "Hardcoded: const STRIPE_KEY = 'pk_live_xxxxxxxxxxxxx'"
+        "description": "Hardcoded: const STRIPE_KEY = 'pk_test_EXAMPLE_NOT_REAL_KEY'"
       },
       "currentBehavior": "Stripe key is hardcoded in source code.",
       "expectedBehavior": "Stripe key loaded from environment variables.",

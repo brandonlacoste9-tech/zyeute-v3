@@ -30,10 +30,10 @@ function log(message, color = 'reset') {
 
 function validateFinding(finding) {
   const required = ['type', 'priority', 'title', 'description'];
-  const missing = required.filter(field => !finding[field]);
+  const missing = required.filter(field => !finding[field] || typeof finding[field] !== 'string');
   
   if (missing.length > 0) {
-    throw new Error(`Missing required fields: ${missing.join(', ')}`);
+    throw new Error(`Missing or invalid required fields: ${missing.join(', ')}`);
   }
   
   const validTypes = ['bug', 'security', 'test-coverage'];
@@ -69,10 +69,11 @@ function createIssueFromFinding(finding) {
   // Build GitHub CLI command
   const titleWithPrefix = `[${finding.priority.toUpperCase()}] ${finding.component || 'Core'}: ${finding.title}`;
   
-  // Escape special characters in body
-  const escapedBody = body.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+  // Use JSON.stringify for robust escaping
+  const escapedBody = JSON.stringify(body);
+  const escapedTitle = JSON.stringify(titleWithPrefix);
   
-  const command = `gh issue create --title "${titleWithPrefix}" --body "${escapedBody}" --label "${labels}"`;
+  const command = `gh issue create --title ${escapedTitle} --body ${escapedBody} --label "${labels}"`;
   
   try {
     // Create issue using GitHub CLI
@@ -180,12 +181,12 @@ function buildLabels(finding) {
   }
   
   // Component
-  if (finding.component) {
+  if (finding.component && typeof finding.component === 'string') {
     labels.push(finding.component.toLowerCase());
   }
   
   // Effort
-  if (finding.effort) {
+  if (finding.effort && typeof finding.effort === 'string') {
     const effortLabel = finding.effort.replace(/\s+/g, '').toLowerCase();
     labels.push(`effort/${effortLabel}`);
   }
