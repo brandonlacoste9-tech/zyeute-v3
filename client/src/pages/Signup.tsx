@@ -9,6 +9,7 @@ import { Button } from '@/components/Button';
 import { Logo } from '@/components/Logo';
 import { signUp } from '@/lib/supabase';
 import { toast } from '@/components/Toast';
+import { GUEST_MODE_KEY, GUEST_TIMESTAMP_KEY, GUEST_VIEWS_KEY } from '@/lib/constants';
 
 export const Signup: React.FC = () => {
   const navigate = useNavigate();
@@ -57,6 +58,11 @@ export const Signup: React.FC = () => {
 
       // Check if component is still mounted before updating state
       if (!isMountedRef.current) return;
+
+      // Clear guest mode on successful signup
+      localStorage.removeItem(GUEST_MODE_KEY);
+      localStorage.removeItem(GUEST_TIMESTAMP_KEY);
+      localStorage.removeItem(GUEST_VIEWS_KEY);
 
       // Show success toast (non-blocking)
       toast.success('Compte créé! Vérifie ton courriel pour confirmer ton compte.');

@@ -16,6 +16,7 @@ import { TiGuy } from '@/components/features/TiGuy';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { AchievementListener } from '@/components/gamification/AchievementModal';
 import { ProtectedAdminRoute } from '@/components/auth/ProtectedAdminRoute';
+import { GUEST_SESSION_DURATION, GUEST_MODE_KEY, GUEST_TIMESTAMP_KEY, GUEST_VIEWS_KEY } from '@/lib/constants';
 
 // Core Pages - Eagerly loaded (frequently accessed)
 import Feed from '@/pages/Feed';
@@ -89,20 +90,44 @@ const LazyLoadFallback: React.FC = () => (
   </div>
 );
 
-// Protected Route Component - Uses session-based auth
+// Protected Route Component - Uses session-based auth + guest mode
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
     const checkAuth = async () => {
       try {
+        // Check for authenticated user
         const response = await fetch('/api/auth/me', { credentials: 'include' });
-        if (!response.ok) {
-          setIsAuthenticated(false);
-          return;
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            setIsAuthenticated(true);
+            return;
+          }
         }
-        const data = await response.json();
-        setIsAuthenticated(!!data.user);
+        
+        // Check for guest mode
+        const guestMode = localStorage.getItem(GUEST_MODE_KEY);
+        const guestTimestamp = localStorage.getItem(GUEST_TIMESTAMP_KEY);
+        
+        if (guestMode === 'true' && guestTimestamp) {
+          const age = Date.now() - parseInt(guestTimestamp, 10);
+          
+          if (age < GUEST_SESSION_DURATION) {
+            // Valid guest session
+            setIsAuthenticated(true);
+            return;
+          } else {
+            // Guest session expired - clear localStorage
+            localStorage.removeItem(GUEST_MODE_KEY);
+            localStorage.removeItem(GUEST_TIMESTAMP_KEY);
+            localStorage.removeItem(GUEST_VIEWS_KEY);
+          }
+        }
+        
+        // No valid auth or guest session
+        setIsAuthenticated(false);
       } catch {
         setIsAuthenticated(false);
       }
