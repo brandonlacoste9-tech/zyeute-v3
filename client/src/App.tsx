@@ -16,7 +16,7 @@ import { TiGuy } from '@/components/features/TiGuy';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { AchievementListener } from '@/components/gamification/AchievementModal';
 import { ProtectedAdminRoute } from '@/components/auth/ProtectedAdminRoute';
-import { SwarmDebug } from '@/components/SwarmDebug';
+// import { SwarmDebug } from '@/components/SwarmDebug';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { GUEST_SESSION_DURATION, GUEST_MODE_KEY, GUEST_TIMESTAMP_KEY, GUEST_VIEWS_KEY } from '@/lib/constants';
 
@@ -552,7 +552,7 @@ function App() {
                             </PageTransition>
 
                             {/* Colony OS Debug Button (Phase 2 - Testing) */}
-                            <SwarmDebug />
+                            {/* <SwarmDebug /> */}
 
                             {/* Ti-Guy mascot assistant (always available) */}
                             <TiGuy />

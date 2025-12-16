@@ -155,7 +155,7 @@ export const Login: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden"
+      className="min-h-screen flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden"
       style={{
         background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1510 50%, #0d0b09 100%)',
       }}
