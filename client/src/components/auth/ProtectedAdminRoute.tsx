@@ -14,9 +14,9 @@
  * Note: Also enforce admin checks in API routes via RLS policies
  */
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { checkIsAdmin } from '@/lib/admin';
+import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
 
 const routeLogger = logger.withContext('ProtectedAdminRoute');
@@ -26,32 +26,10 @@ interface ProtectedAdminRouteProps {
 }
 
 export const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = React.memo(({ children }) => {
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null); // null = loading
-  const [isChecking, setIsChecking] = useState(true);
-
-  useEffect(() => {
-    const verifyAdmin = async () => {
-      setIsChecking(true);
-      try {
-        const adminStatus = await checkIsAdmin();
-        setIsAdmin(adminStatus);
-
-        if (!adminStatus) {
-          routeLogger.warn('Unauthorized admin access attempt');
-        }
-      } catch (error) {
-        routeLogger.error('Error verifying admin status:', error);
-        setIsAdmin(false);
-      } finally {
-        setIsChecking(false);
-      }
-    };
-
-    verifyAdmin();
-  }, []);
+  const { isAdmin, isLoading } = useAuth();
 
   // Show loading state while checking
-  if (isChecking || isAdmin === null) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
@@ -64,6 +42,7 @@ export const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = React.mem
 
   // Redirect if not admin
   if (!isAdmin) {
+    routeLogger.warn('Unauthorized admin access attempt');
     return <Navigate to="/" replace />;
   }
 

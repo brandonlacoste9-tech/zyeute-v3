@@ -4,6 +4,7 @@
  * Migration: Replaces legacy session-based /api/auth/me check
  */
 
+import { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { logger } from './logger';
 
@@ -12,11 +13,15 @@ const adminLogger = logger.withContext('Admin');
 /**
  * Check if current user is an admin via Supabase Metadata
  */
-export async function checkIsAdmin(): Promise<boolean> {
+export async function checkIsAdmin(currentUser?: User | null): Promise<boolean> {
   try {
-    const { data: { user }, error } = await supabase.auth.getUser();
+    let user = currentUser;
+    if (!user) {
+      const { data } = await supabase.auth.getUser();
+      user = data.user;
+    }
 
-    if (error || !user) {
+    if (!user) {
       adminLogger.debug('No authenticated user found');
       return false;
     }

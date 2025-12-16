@@ -10,7 +10,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function checkStatus() {
-    const taskId = 'b12e88a8-68f8-4f97-aea1-c234e7b2418a';
+    const taskId = 'acb21640-06e8-4da6-95b8-67f1190f0e28';
     console.log(`🔍 Checking status for task ${taskId}...`);
 
     const { data, error } = await supabase

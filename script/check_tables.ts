@@ -13,7 +13,7 @@ async function main() {
     const cols = await db.execute(sql`
       SELECT column_name 
       FROM information_schema.columns 
-      WHERE table_name = 'colony_tasks';
+      WHERE table_name = 'stories';
     `);
     console.log("Columns:", cols.rows.map((c: any) => c.column_name).join(', '));
 
