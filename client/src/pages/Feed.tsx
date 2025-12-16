@@ -21,6 +21,7 @@ import type { Post, User, Story } from '@/types';
 import { logger } from '../lib/logger';
 import copy from '../lib/copy';
 import { useGuestMode } from '@/hooks/useGuestMode';
+import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 
 const feedLogger = logger.withContext('Feed');
 
@@ -33,22 +34,29 @@ export const Feed: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [hasMore, setHasMore] = React.useState(true);
   const [page, setPage] = React.useState(0);
-  
+
   const { showOnboarding, isChecked, completeOnboarding } = useOnboarding();
-  
+
   // Guest mode tracking
   const { incrementViews } = useGuestMode();
-  
+
   // Gift modal state
   const [giftModalOpen, setGiftModalOpen] = useState(false);
   const [selectedRecipient, setSelectedRecipient] = useState<User | null>(null);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
-  
+
   // Gift overlay animation state
   const [showGiftOverlay, setShowGiftOverlay] = useState(false);
   const [sentGiftEmoji, setSentGiftEmoji] = useState('');
   const [sentGiftType, setSentGiftType] = useState('');
   const [sentGiftRecipientName, setSentGiftRecipientName] = useState('');
+
+  // Smart Autoplay: Determine which post is visible
+  const postIds = useMemo(() => posts.map(p => p.id), [posts]);
+  const { activeId: activePostId, setRef } = useIntersectionObserver(postIds, {
+    threshold: 0.6,
+    rootMargin: "-20% 0px -20% 0px" // Trigger when element is in middle 60% of screen
+  });
 
   // Increment guest view counter on page load
   React.useEffect(() => {
@@ -71,10 +79,10 @@ export const Feed: React.FC = () => {
     try {
       feedLogger.debug('[Feed] Fetching posts, page:', pageNum);
       const data = await getFeedPosts(pageNum, 20);
-      feedLogger.debug('[Feed] Received posts data:', { 
-        count: data?.length || 0, 
+      feedLogger.debug('[Feed] Received posts data:', {
+        count: data?.length || 0,
         posts: data,
-        firstPost: data?.[0] 
+        firstPost: data?.[0]
       });
 
       if (pageNum === 0) {
@@ -145,13 +153,13 @@ export const Feed: React.FC = () => {
   // Handle fire toggle - memoized to prevent VideoCard re-renders
   const handleFireToggle = React.useCallback(async (postId: string, _currentFire: number) => {
     if (!currentUser) return;
-    
+
     try {
       const success = await togglePostFire(postId, currentUser.id);
       if (success) {
         // Optimistically update local state
-        setPosts(prev => prev.map(p => 
-          p.id === postId 
+        setPosts(prev => prev.map(p =>
+          p.id === postId
             ? { ...p, fire_count: p.fire_count + (p.is_fired ? -1 : 1), is_fired: !p.is_fired }
             : p
         ));
@@ -213,19 +221,19 @@ export const Feed: React.FC = () => {
   // Handle gift sent - update gift count and show overlay
   const handleGiftSent = useCallback((giftType: string) => {
     if (selectedPostId) {
-      setPosts(prev => prev.map(p => 
-        p.id === selectedPostId 
+      setPosts(prev => prev.map(p =>
+        p.id === selectedPostId
           ? { ...p, gift_count: (p.gift_count || 0) + 1 }
           : p
       ));
     }
-    
+
     // Trigger overlay animation
     setSentGiftType(giftType);
     setSentGiftEmoji(GIFT_EMOJIS[giftType] || '🎁');
     setSentGiftRecipientName(selectedRecipient?.display_name || selectedRecipient?.username || 'Créateur');
     setShowGiftOverlay(true);
-    
+
     setGiftModalOpen(false);
     setSelectedRecipient(null);
     setSelectedPostId(null);
@@ -248,7 +256,7 @@ export const Feed: React.FC = () => {
       {isChecked && showOnboarding && (
         <Onboarding onComplete={completeOnboarding} />
       )}
-      
+
       {/* Premium Header with leather texture */}
       <div className="sticky top-0 z-30 bg-neutral-900/95 backdrop-blur-md border-b border-gold-500/30 shadow-lg shadow-black/50">
         <div className="max-w-2xl mx-auto px-4 py-3">
@@ -355,10 +363,12 @@ export const Feed: React.FC = () => {
           </div>
         ) : (
           <>
+            {/* Posts Feed with Smart Autoplay */}
             {posts.map((post, index) => (
               <div
                 key={post.id}
-                className="animate-fade-in-up"
+                ref={setRef(post.id)} // Register for intersection observation
+                className="animate-fade-in-up scroll-mt-24" // scroll-mt for better snapping alignment
                 style={{
                   animationDelay: `${index * 0.1}s`,
                   animationFillMode: 'both',
@@ -367,8 +377,8 @@ export const Feed: React.FC = () => {
                 <VideoCard
                   post={post}
                   user={post.user!}
-                  autoPlay={false}
-                  muted={true}
+                  autoPlay={activePostId === post.id} // Play only if this is the active post
+                  muted={true} // Start muted by default
                   onFireToggle={handleFireToggle}
                   onComment={handleComment}
                   onShare={handleShare}

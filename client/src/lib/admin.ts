@@ -23,14 +23,31 @@ export async function checkIsAdmin(): Promise<boolean> {
 
     // Check multiple common patterns for Admin flags in metadata
     // Priority: app_metadata (secure, set by service role) > user_metadata (editable via dashboard)
-    const isAdmin =
+    const isAdminViaMetadata =
       user.app_metadata?.role === 'service_role' || // Supabase service role
       user.app_metadata?.role === 'admin' ||        // Custom RBAC role
       user.user_metadata?.is_admin === true ||      // Boolean flag
       user.user_metadata?.role === 'admin';         // String role
 
-    if (isAdmin) {
-      adminLogger.debug('Admin status confirmed via Supabase');
+    if (isAdminViaMetadata) {
+      adminLogger.debug('Admin status confirmed via Supabase Metadata');
+      return true;
+    }
+
+    // 🛡️ Fallback: Query the public.user_profiles table directly
+    // This is necessary because Supabase Auth metadata might not be synced with our custom table
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      adminLogger.warn('Error fetching user profile for admin check', profileError);
+    }
+
+    if (profile?.is_admin) {
+      adminLogger.debug('Admin status confirmed via user_profiles table');
       return true;
     }
 

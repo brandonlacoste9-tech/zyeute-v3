@@ -1,173 +1,300 @@
-#!/usr/bin/env python3
-"""
-🐝 Task Poller - Colony OS Bridge Worker
-
-Purpose: Poll Supabase for pending tasks and dispatch to bees
-Status: Phase 2 - Active
-Author: Colony OS Team
-"""
-
 import os
 import sys
 import time
-import logging
+import json
+import requests
 import asyncio
 from datetime import datetime
 from dotenv import load_dotenv
 
+# Try importing standard libs, facilitate partial installs
 try:
-    from supabase import create_client, Client
-except ImportError as e:
-    print(f"❌ Missing dependency: {e}")
-    print("Run: pip install -r ../requirements.txt")
-    sys.exit(1)
+    import fal_client
+except ImportError:
+    fal_client = None
 
-# Load environment - try multiple paths
-import pathlib
-script_dir = pathlib.Path(__file__).parent.resolve()
-colony_dir = script_dir.parent
-project_root = colony_dir.parent.parent
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
 
-load_dotenv(colony_dir / ".env.colony")
-load_dotenv(project_root / ".env")
+from supabase import create_client, Client
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - [TASK_POLLER] - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Import the new Security Bee & Health Bee
+from bees import security_bee
+from bees import health_bee
 
-# Configuration
-SUPABASE_URL = os.getenv("VITE_SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "2"))
+# Load environment
+script_dir = os.path.dirname(os.path.abspath(__file__))
+# Add parent directory to path so we can import 'bees'
+sys.path.append(os.path.dirname(script_dir))
 
-if not all([SUPABASE_URL, SUPABASE_SERVICE_KEY]):
-    logger.error("❌ Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_KEY")
-    sys.exit(1)
+# Try loading from colony env first (core/../.env.colony)
+load_dotenv(os.path.join(script_dir, '../.env.colony'))
+# Fallback/Additional from root
+load_dotenv(os.path.join(script_dir, '../../../.env'))
 
-# Initialize Supabase client
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+# 1. Setup Supabase (The Hive Mind)
+url: str = os.environ.get("VITE_SUPABASE_URL")
+key: str = os.environ.get("SUPABASE_SERVICE_KEY")
+if not url or not key:
+    print("❌ Critical: Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_KEY")
+    exit(1)
 
-# ═══════════════════════════════════════════════════════════════
-# TASK PROCESSING
-# ═══════════════════════════════════════════════════════════════
+supabase: Client = create_client(url, key)
 
-async def process_task(task: dict) -> dict:
-    """
-    Process a task by dispatching to the appropriate bee.
-    Returns the result to be stored in the database.
-    """
-    task_id = task['id']
-    command = task['command']
+# 2. Setup Gemini (The Eyes/Reflexes)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+if GEMINI_API_KEY and genai:
+    genai.configure(api_key=GEMINI_API_KEY)
+    gemini_model = genai.GenerativeModel('gemini-2.5-flash')
+    print("👀 [SENSORY CORTEX] Gemini Vision Online")
+else:
+    print("⚠️ [SENSORY CORTEX] Gemini Offline (Missing Key/Lib)")
+
+# 3. Setup DeepSeek (The Brain/Logic)
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+
+# --- PROCESSORS ---
+
+def process_deepseek_task(task):
+    """Routes logic/chat tasks to DeepSeek V3."""
+    print(f"🧠 [NEUROSPHERE] DeepSeek V3 thinking about: {task['id']}")
+    
     metadata = task.get('metadata', {})
-    target_bee = metadata.get('target_bee', 'general')
-    
-    logger.info(f"🐝 Processing task [{task_id[:8]}...]: {command}")
-    logger.info(f"   Target Bee: {target_bee}")
-    
-    # Simulate bee work (Phase 2: placeholder for actual dispatch)
-    # In Phase 3, this will route to Finance Bee, Guardian Bee, etc.
-    await asyncio.sleep(2)
-    
-    result = {
-        "status": "success",
-        "processed_by": f"{target_bee}_bee",
-        "message": f"Task '{command}' completed successfully",
-        "timestamp": datetime.now().isoformat()
-    }
-    
-    logger.info(f"✅ Task [{task_id[:8]}...] completed!")
-    return result
+    messages = metadata.get('messages', [])
+    if not messages and 'prompt' in metadata:
+        messages = [{"role": "user", "content": metadata['prompt']}]
 
+    try:
+        if not DEEPSEEK_API_KEY:
+             raise ValueError("DeepSeek Key Missing")
 
-async def poll_for_tasks():
-    """Poll Supabase for pending tasks and process them."""
-    logger.info("🔍 Polling for pending tasks...")
+        response = requests.post(
+            "https://api.deepseek.com/chat/completions",
+            headers={
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "deepseek-chat", # V3
+                "messages": messages,
+                "temperature": 1.3 
+            }
+        )
+        response.raise_for_status()
+        result = response.json()['choices'][0]['message']['content']
+        return {"status": "completed", "result": {"text": result}}
+    except Exception as e:
+        print(f"❌ DeepSeek Error: {e}")
+        return {"status": "failed", "error": str(e)}
+
+def process_gemini_vision_task(task):
+    """Routes image analysis tasks to Gemini 2.5 Flash."""
+    print(f"👀 [SENSORY CORTEX] Gemini Flash looking at image: {task['id']}")
+    
+    if not GEMINI_API_KEY or not genai:
+         return {"status": "failed", "error": "Gemini not configured"}
+
+    metadata = task.get('metadata', {})
+    image_url = metadata.get('image_url')
+    prompt = metadata.get('prompt', "Describe this image in detail.")
     
     try:
-        # Fetch pending tasks (oldest first, high priority first)
-        response = supabase.table('colony_tasks') \
-            .select('*') \
-            .eq('status', 'pending') \
-            .order('priority', desc=True) \
-            .order('created_at', desc=False) \
-            .limit(5) \
-            .execute()
-        
-        tasks = response.data
-        
-        if not tasks:
-            return 0
-        
-        logger.info(f"📥 Found {len(tasks)} pending task(s)")
-        
-        for task in tasks:
-            task_id = task['id']
-            
-            # Update status to 'processing'
-            supabase.table('colony_tasks').update({
-                'status': 'processing',
-                'updated_at': datetime.now().isoformat()
-            }).eq('id', task_id).execute()
-            
-            logger.info(f"🐝 Received Task [{task_id[:8]}...]: {task['command']}")
-            
-            try:
-                # Process the task
-                result = await process_task(task)
-                
-                # Update status to 'completed' with result
-                supabase.table('colony_tasks').update({
-                    'status': 'completed',
-                    'result': result,
-                    'completed_at': datetime.now().isoformat(),
-                    'updated_at': datetime.now().isoformat()
-                }).eq('id', task_id).execute()
-                
-            except Exception as e:
-                logger.error(f"❌ Task [{task_id[:8]}...] failed: {e}")
-                
-                # Update status to 'failed'
-                supabase.table('colony_tasks').update({
-                    'status': 'failed',
-                    'result': {'error': str(e)},
-                    'updated_at': datetime.now().isoformat()
-                }).eq('id', task_id).execute()
-        
-        return len(tasks)
-        
+        img_data = requests.get(image_url).content
+        response = gemini_model.generate_content([
+            {'mime_type': 'image/jpeg', 'data': img_data},
+            prompt
+        ])
+        return {"status": "completed", "result": {"description": response.text}}
     except Exception as e:
-        logger.error(f"❌ Polling error: {e}")
-        return 0
+        print(f"❌ Gemini Vision Error: {e}")
+        return {"status": "failed", "error": str(e)}
 
+def process_fal_task(task):
+    """Routes creation tasks (Video/Image) to Flux/Kling via FAL."""
+    command = task['command']
+    metadata = task.get('metadata', {})
+    
+    # Check if this is a resumption of a waiting task
+    if task.get('status') == 'async_waiting':
+        request_id = metadata.get('fal_request_id')
+        print(f"🎨 [ACTION LAYER] Checking status for FAL Request: {request_id}")
+        
+        try:
+            status = fal_client.status("fal-ai/kling-video/v1/standard/text-to-video", request_id, with_logs=True)
+            if status['status'] == 'COMPLETED':
+                result = fal_client.result("fal-ai/kling-video/v1/standard/text-to-video", request_id)
+                return {"status": "completed", "result": {"video_url": result['video']['url']}}
+            elif status['status'] == 'FAILED':
+                 return {"status": "failed", "error": "FAL Generation Failed"}
+            else:
+                # Still running
+                return {"status": "async_waiting", "result": None} # No change
+        except Exception as e:
+            print(f"❌ FAL Check Error: {e}")
+            return {"status": "async_waiting", "error": str(e)} # Keep waiting on transient errors
 
-async def main():
-    """Main polling loop."""
-    logger.info("🐝 Task Poller initializing...")
-    logger.info(f"   Supabase: {'✅ Connected' if SUPABASE_URL else '❌ Missing'}")
-    logger.info(f"   Poll Interval: {POLL_INTERVAL}s")
-    logger.info("🚀 Task Poller is now watching for tasks...")
-    logger.info("=" * 60)
+    # Start new task
+    print(f"🎨 [ACTION LAYER] FAL generating {command} for: {task['id']}")
+    
+    if not fal_client:
+         return {"status": "failed", "error": "fal-client lib missing"}
+         
+    try:
+        if command == 'generate_video':
+            # Use Kling - Submit ASYNC
+            handler = fal_client.submit(
+                "fal-ai/kling-video/v1/standard/text-to-video",
+                arguments={
+                    "prompt": metadata.get('prompt', 'A cool video'),
+                    "aspect_ratio": "16:9",
+                    "duration": "5"
+                }
+            )
+            # Store request ID and go to waiting state
+            request_id = handler.request_id
+            print(f"⏳ [ACTION LAYER] Video Job Submitted (ID: {request_id}). Waiting...")
+            
+            # Update metadata with request ID
+            new_metadata = metadata.copy()
+            new_metadata['fal_request_id'] = request_id
+            
+            # We need to update metadata in DB, but process_task returns result.
+            # We'll return a special result that main_loop handles.
+            return {
+                "status": "async_waiting", 
+                "result": {"message": "Job submitted"},
+                "metadata_update": new_metadata
+            }
+            
+        elif command == 'generate_image':
+            # Use Flux Schnell (Fast enough to keep sync for now, or make async if >10s)
+            handler = fal_client.submit(
+                "fal-ai/flux/schnell",
+                arguments={
+                    "prompt": metadata.get('prompt', 'A cool image'),
+                    "image_size": "square_hd"
+                }
+            )
+            result = handler.get()
+            return {"status": "completed", "result": {"image_url": result['images'][0]['url']}}
+            
+    except Exception as e:
+        print(f"❌ FAL Error: {e}")
+        return {"status": "failed", "error": str(e)}
+
+def process_task(task):
+    """The Hive Mind Router"""
+    command = task['command']
+    metadata = task.get('metadata', {})
+    target_bee = metadata.get('target_bee')
+
+    # ROUTING LOGIC
+    
+    # 0. HEALTH
+    if command in ['check_vitals', 'cleanup_systems'] or target_bee == 'health_bee':
+        return health_bee.handle_task(command, metadata)
+
+    # 1. SECURITY
+    elif command in ['ban_user', 'hide_content'] or target_bee == 'security_bee':
+        return security_bee.execute_security_command(task)
+
+    # 2. INTELLIGENCE
+    elif command in ['chat', 'improve_text', 'write_script']:
+        return process_deepseek_task(task)
+    
+    # 3. VISION
+    elif command in ['analyze_image', 'scan_moderation']:
+        return process_gemini_vision_task(task)
+        
+    # 4. CREATION (Supports Async)
+    elif command in ['generate_image', 'generate_video']:
+        return process_fal_task(task)
+        
+    else:
+        return {"status": "failed", "error": f"Unknown command: {command}"}
+
+def main_loop():
+    print("🐝 [HIVE MIND] Colony OS Triad Poller Online (Hardened Mode)...")
+    print("   🛡️ Security | 🔺 Gemini | 🧠 DeepSeek | 🎨 Flux/Kling | 🩺 Health")
     
     while True:
         try:
-            processed = await poll_for_tasks()
-            if processed == 0:
-                # No tasks - quiet polling
-                pass
-        except KeyboardInterrupt:
-            logger.info("👋 Task Poller shutting down...")
-            break
+            # 1. Fetch PENDING tasks (New Work)
+            response = supabase.table('colony_tasks')\
+                .select("*")\
+                .eq('status', 'pending')\
+                .order('priority', desc=True)\
+                .limit(1)\
+                .execute()
+            
+            pending_tasks = response.data
+            
+            # 2. Fetch ASYNC WAITING tasks (Ongoing Work)
+            # Only fetch if we didn't get a pending task, or interleave them.
+            # For simplicity, we check waiting tasks every loop too.
+            waiting_response = supabase.table('colony_tasks')\
+                .select("*")\
+                .eq('status', 'async_waiting')\
+                .limit(5)\
+                .execute()
+                
+            waiting_tasks = waiting_response.data
+            
+            # Process Waiting Tasks
+            for task in waiting_tasks:
+                print(f"🔄 Checking Async Task {task['id']} ({task['command']})...")
+                result = process_task(task)
+                
+                if result['status'] != 'async_waiting':
+                    # It finished or failed!
+                    supabase.table('colony_tasks').update({
+                        'status': result['status'],
+                        'result': result.get('result', {}),
+                        'error': result.get('error'),
+                        'completed_at': datetime.now().isoformat()
+                    }).eq('id', task['id']).execute()
+            
+            # Process New Tasks
+            if pending_tasks:
+                task = pending_tasks[0]
+                print(f"\n⚡ Starting Task {task['id']}: {task['command']}")
+                
+                # Mark as processing
+                supabase.table('colony_tasks').update({
+                    'status': 'processing',
+                    'worker_id': os.getpid(), # Track who is working on it
+                    'started_at': datetime.now().isoformat()
+                }).eq('id', task['id']).execute()
+                
+                # Execute Logic
+                result = process_task(task)
+                
+                # Update DB Based on Result
+                update_payload = {
+                    'status': result['status'],
+                    'result': result.get('result', {}),
+                    'error': result.get('error')
+                }
+                
+                if result['status'] == 'completed':
+                    update_payload['completed_at'] = datetime.now().isoformat()
+                elif result.get('metadata_update'):
+                    # Task went async, update metadata (e.g. store request_id)
+                    update_payload['metadata'] = result['metadata_update']
+                
+                supabase.table('colony_tasks').update(update_payload).eq('id', task['id']).execute()
+                
+            if not pending_tasks and not waiting_tasks:
+                time.sleep(2) 
+                
         except Exception as e:
-            logger.error(f"❌ Unexpected error: {e}")
-        
-        await asyncio.sleep(POLL_INTERVAL)
-
+            print(f"⚠️ Loop Error: {e}")
+            time.sleep(5)
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        main_loop()
     except KeyboardInterrupt:
-        print("\n👋 Goodbye!")
+        print("\n👋 Hive Mind Sleeping...")

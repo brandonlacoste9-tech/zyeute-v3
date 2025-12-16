@@ -1,10 +1,11 @@
+import 'dotenv/config'; // Load environment variables from .env
 import express, { type Request, Response, NextFunction } from "express";
-// --- OpenTelemetry Tracing ---
-import '../tracing-setup';
+// --- OpenTelemetry Tracing (Disabled temporarily due to version mismatch) ---
+// import '../tracing-setup';
 import { registerRoutes } from "./routes.js";
 import { serveStatic } from "./static.js";
 import { createServer } from "http";
-import { tracingMiddleware, getTraceContext, recordException } from "./tracer.js";
+// import { tracingMiddleware, getTraceContext, recordException } from "./tracer.js";
 
 const app = express();
 
@@ -38,7 +39,7 @@ app.use(
 app.use(express.urlencoded({ extended: false }));
 
 // Add tracing middleware early to capture all requests
-app.use(tracingMiddleware());
+// app.use(tracingMiddleware()); // Disabled - OTel version mismatch
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -48,13 +49,13 @@ export function log(message: string, source = "express") {
     hour12: true,
   });
 
-  // Include trace context in logs for correlation
-  const traceContext = getTraceContext();
-  const traceInfo = traceContext.traceId
-    ? ` [trace:${traceContext.traceId.substring(0, 8)}]`
-    : "";
+  // Include trace context in logs for correlation (disabled)
+  // const traceContext = getTraceContext();
+  // const traceInfo = traceContext.traceId
+  //   ? ` [trace:${traceContext.traceId.substring(0, 8)}]`
+  //   : "";
 
-  console.log(`${formattedTime} [${source}]${traceInfo} ${message}`);
+  console.log(`${formattedTime} [${source}] ${message}`);
 }
 
 app.use((req, res, next) => {
@@ -90,11 +91,11 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    // Record exception in trace
-    recordException(err, {
-      "error.status": status,
-      "error.message": message,
-    });
+    // Record exception in trace (disabled)
+    // recordException(err, {
+    //   "error.status": status,
+    //   "error.message": message,
+    // });
 
     res.status(status).json({ message });
     throw err;
@@ -118,8 +119,8 @@ app.use((req, res, next) => {
   httpServer.listen(
     {
       port,
-      host: "0.0.0.0",
-      reusePort: true,
+      host: "127.0.0.1", // Use localhost for Windows compatibility
+      // reusePort: true, // Linux-only, disabled for Windows
     },
     () => {
       log(`serving on port ${port}`);

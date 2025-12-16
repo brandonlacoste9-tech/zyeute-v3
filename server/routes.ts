@@ -184,8 +184,24 @@ export async function registerRoutes(
     }
   });
 
-  // Legacy /api/auth/logout and /api/auth/me endpoints removed
-  // Frontend now uses Supabase auth directly (supabase.auth.signOut())
+  // Legacy /api/auth/logout removed - Frontend uses Supabase signOut directly
+
+  // [RESTORED] Get current user profile (bridged via JWT)
+  // This is needed because client/src/services/api.ts still calls /auth/me
+  // to get the full profile data (coins, region, etc.) which isn't in the JWT.
+  app.get("/api/auth/me", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.userId!);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      const { password: _, ...safeUser } = user;
+      res.json({ user: safeUser });
+    } catch (error) {
+      console.error("Get me error:", error);
+      res.status(500).json({ error: "Failed to get user profile" });
+    }
+  });
 
   // ============ USER ROUTES ============
 

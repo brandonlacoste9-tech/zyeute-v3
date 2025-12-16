@@ -1,128 +1,175 @@
-import { useState } from 'react';
-import { colonyClient } from '@/zyeute-colony-bridge/ColonyClient';
-import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Activity, Shield, Video, Terminal } from 'lucide-react';
 
-/**
- * SwarmDebug Component
- * A fixed debug button to test the Colony OS bridge
- */
 export function SwarmDebug() {
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
-    const [taskStatus, setTaskStatus] = useState<string>('idle');
+    const [tasks, setTasks] = useState<any[]>([]);
+    const [prompt, setPrompt] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleTestSwarm = async () => {
-        try {
-            setIsSubmitting(true);
-            setTaskStatus('submitting');
+    // 1. Subscribe to the Colony's Thoughts
+    useEffect(() => {
+        fetchTasks();
+        const subscription = supabase
+            .channel('colony_tasks')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'colony_tasks' }, (payload) => {
+                fetchTasks();
+            })
+            .subscribe();
 
-            toast.info('🐝 Submitting task to Colony OS...');
+        return () => { subscription.unsubscribe(); };
+    }, []);
 
-            // Submit task to the swarm
-            const taskId = await colonyClient.submitTask({
-                description: 'Health Check Request',
-                beeType: 'finance',
-                priority: 'high'
-            });
+    async function fetchTasks() {
+        const { data } = await supabase
+            .from('colony_tasks')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(5);
+        if (data) setTasks(data);
+    }
 
-            if (!taskId) {
-                throw new Error('Failed to submit task');
-            }
+    // 2. Command Functions
+    async function triggerVideoBee() {
+        if (!prompt) return;
+        setLoading(true);
+        await supabase.from('colony_tasks').insert({
+            command: 'generate_video',
+            status: 'pending',
+            metadata: { prompt: prompt, target_bee: 'content_bee' }
+        });
+        setPrompt('');
+        setLoading(false);
+    }
 
-            setCurrentTaskId(taskId);
-            setTaskStatus('pending');
-            toast.success(`✅ Task submitted: ${taskId.substring(0, 8)}...`);
+    async function triggerSecurityDrill() {
+        setLoading(true);
+        await supabase.from('colony_tasks').insert({
+            command: 'scan_moderation', // Will trigger a scan of recent posts
+            status: 'pending',
+            metadata: { target_bee: 'security_bee', target: 'self_check', reason: 'Manual drill initiated' }
+        });
+        setLoading(false);
+    }
 
-            // Subscribe to task updates
-            const subscription = colonyClient.subscribeToTask(taskId, (status, result) => {
-                setTaskStatus(status);
-
-                if (status === 'processing') {
-                    toast.loading(`🐝 Task is being processed...`, { id: taskId });
-                } else if (status === 'completed') {
-                    toast.success(`✅ Task completed!`, { id: taskId });
-                    console.log('Task result:', result);
-                    subscription.unsubscribe();
-                    setIsSubmitting(false);
-                } else if (status === 'failed') {
-                    toast.error(`❌ Task failed`, { id: taskId });
-                    console.error('Task error:', result);
-                    subscription.unsubscribe();
-                    setIsSubmitting(false);
-                }
-            });
-
-            // Auto-unsubscribe after 30 seconds if no completion
-            setTimeout(() => {
-                if (taskStatus !== 'completed' && taskStatus !== 'failed') {
-                    subscription.unsubscribe();
-                    setIsSubmitting(false);
-                    toast.warning('⏰ Task monitoring timed out. Check Task Poller logs.');
-                }
-            }, 30000);
-
-        } catch (error) {
-            console.error('Swarm test error:', error);
-            toast.error(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            setIsSubmitting(false);
-            setTaskStatus('error');
-        }
-    };
-
-    const getStatusColor = () => {
-        switch (taskStatus) {
-            case 'pending': return 'bg-yellow-500';
-            case 'processing': return 'bg-blue-500';
-            case 'completed': return 'bg-green-500';
-            case 'failed': return 'bg-red-500';
-            case 'error': return 'bg-red-500';
-            default: return 'bg-purple-500';
-        }
-    };
+    async function triggerHealthCheck() {
+        setLoading(true);
+        await supabase.from('colony_tasks').insert({
+            command: 'check_vitals',
+            status: 'pending',
+            metadata: { target_bee: 'health_bee', scope: 'full_system' }
+        });
+        setLoading(false);
+    }
 
     return (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
-            {/* Status indicator */}
-            {currentTaskId && (
-                <div className="bg-black/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg text-xs font-mono">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${getStatusColor()} animate-pulse`} />
-                        <span>{taskStatus.toUpperCase()}</span>
+        <Card className="w-full max-w-2xl mx-auto bg-black/90 border-yellow-500/20 text-yellow-500/80 font-mono my-8">
+            <CardHeader className="border-b border-yellow-500/20 pb-2">
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <Terminal className="w-5 h-5" />
+                        HIVE COMMAND CENTER
+                    </CardTitle>
+                    <Badge variant="outline" className="border-green-500 text-green-500 animate-pulse">
+                        ONLINE
+                    </Badge>
+                </div>
+            </CardHeader>
+
+            <CardContent className="space-y-6 pt-4">
+                {/* Command Modules */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                    {/* Creation Module */}
+                    <div className="space-y-2 p-3 border border-yellow-500/10 rounded bg-yellow-500/5">
+                        <div className="flex items-center gap-2 text-sm font-bold text-white">
+                            <Video className="w-4 h-4" /> CREATION BEE
+                        </div>
+                        <Input
+                            placeholder="Prompt for Kling..."
+                            value={prompt}
+                            onChange={(e) => setPrompt(e.target.value)}
+                            className="bg-black border-yellow-500/20 h-8 text-xs"
+                        />
+                        <Button
+                            size="sm"
+                            onClick={triggerVideoBee}
+                            disabled={loading || !prompt}
+                            className="w-full bg-yellow-600 hover:bg-yellow-700 text-black h-7 text-xs"
+                        >
+                            GENERATE VIDEO
+                        </Button>
                     </div>
-                    <div className="text-gray-400 mt-1">
-                        {currentTaskId.substring(0, 8)}...
+
+                    {/* Security Module */}
+                    <div className="space-y-2 p-3 border border-red-500/10 rounded bg-red-500/5">
+                        <div className="flex items-center gap-2 text-sm font-bold text-red-400">
+                            <Shield className="w-4 h-4" /> SECURITY BEE
+                        </div>
+                        <div className="text-[10px] text-red-400/60 leading-tight h-8">
+                            Initiate deep scan of recent content logs.
+                        </div>
+                        <Button
+                            size="sm"
+                            onClick={triggerSecurityDrill}
+                            disabled={loading}
+                            variant="destructive"
+                            className="w-full h-7 text-xs"
+                        >
+                            RUN DRILL
+                        </Button>
+                    </div>
+
+                    {/* Health Module */}
+                    <div className="space-y-2 p-3 border border-blue-500/10 rounded bg-blue-500/5">
+                        <div className="flex items-center gap-2 text-sm font-bold text-blue-400">
+                            <Activity className="w-4 h-4" /> HEALTH BEE
+                        </div>
+                        <div className="text-[10px] text-blue-400/60 leading-tight h-8">
+                            Check database latency and system vitals.
+                        </div>
+                        <Button
+                            size="sm"
+                            onClick={triggerHealthCheck}
+                            disabled={loading}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white h-7 text-xs"
+                        >
+                            CHECK VITALS
+                        </Button>
                     </div>
                 </div>
-            )}
 
-            {/* Test button */}
-            <button
-                onClick={handleTestSwarm}
-                disabled={isSubmitting}
-                className="group relative bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-                {isSubmitting ? (
-                    <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>Testing Swarm...</span>
-                    </>
-                ) : (
-                    <>
-                        <span className="text-xl">🐝</span>
-                        <span>Test Swarm</span>
-                    </>
-                )}
-            </button>
-
-            {/* Tooltip */}
-            {!isSubmitting && (
-                <div className="absolute bottom-full mb-2 right-0 hidden group-hover:block">
-                    <div className="bg-black/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg text-xs whitespace-nowrap">
-                        Test the Colony OS Bridge
+                {/* Live Feed */}
+                <div className="space-y-2">
+                    <h3 className="text-xs uppercase tracking-widest text-yellow-500/50">Neurosphere Live Feed</h3>
+                    <div className="bg-black border border-yellow-500/10 rounded p-2 h-48 overflow-y-auto space-y-2 font-mono text-xs">
+                        {tasks.map((task) => (
+                            <div key={task.id} className="flex gap-2 border-b border-white/5 pb-1">
+                                <span className={`
+                  ${task.status === 'completed' ? 'text-green-500' : ''}
+                  ${task.status === 'processing' ? 'text-blue-500' : ''}
+                  ${task.status === 'failed' ? 'text-red-500' : ''}
+                  ${task.status === 'pending' ? 'text-yellow-500' : ''}
+                  ${task.status === 'async_waiting' ? 'text-purple-500' : ''}
+                `}>[{task.status?.toUpperCase()}]</span>
+                                <span className="text-white/70">{task.command}</span>
+                                {task.result && (
+                                    <span className="text-white/40 truncate">
+                                        - {JSON.stringify(task.result).substring(0, 50)}...
+                                    </span>
+                                )}
+                            </div>
+                        ))}
+                        {tasks.length === 0 && <div className="text-center py-10 text-white/20">Waiting for signals...</div>}
                     </div>
                 </div>
-            )}
-        </div>
+            </CardContent>
+        </Card>
     );
 }
+
+export default SwarmDebug;
