@@ -82,7 +82,7 @@
 #### 🟢 **SAFE: Hybrid Auth System Removed (Fixed)**
 - **Previous Issue:** Race conditions between Supabase and Express sessions
 - **Fix Implemented:** Replaced legacy session middleware with stateless JWT `req.userId` injection
-- **Status:** All routes now use unified Supabase Bearer tokens
+- **Status:** All routes now use unified Supabase Bearer tokens. Frontend `AuthContext` fully migrated.
 
 #### 🟢 **SAFE: Admin Checks Migrated to Supabase (Fixed)**
 - **Previous State:** Admin status stored in Express session metadata
@@ -318,10 +318,10 @@ None - No immediate security threats detected.
 
 ### 🟡 **HIGH PRIORITY (Next 2 Weeks)**
 
-1. **Fix Hybrid Auth Race Conditions**
-   - [ ] Update `useAuth` hook to query `/api/auth/me` instead of `/api/auth/user`
-   - [ ] Add logout synchronization between Supabase and Express sessions
-   - [ ] Document which auth system to use for new features
+1. **Fix Hybrid Auth Race Conditions (Completed)**
+   - [x] Update `useAuth` hook to query `/api/auth/me` instead of `/api/auth/user` (Replaced with `AuthContext`)
+   - [x] Add logout synchronization between Supabase and Express sessions ( handled by `AuthContext`)
+   - [x] Document which auth system to use for new features
 
 2. **Resolve ENV File Merge Conflict**
    - [x] Clean up `.env.example` lines 67-72
@@ -335,7 +335,7 @@ None - No immediate security threats detected.
 ### 🟢 **MEDIUM PRIORITY (Next Month)**
 
 4. **Optimize Frontend Performance**
-   - [ ] Memoize `ProtectedRoute` component
+   - [x] Memoize `ProtectedRoute` component (Refactored to use `useAuth`)
    - [ ] Audit context provider re-renders
    - [ ] Add React DevTools Profiler
 
@@ -366,13 +366,13 @@ None - No immediate security threats detected.
 - [ ] Test all protected API routes with Bearer tokens
 
 **Phase 3: Frontend Migration (Week 3)**
-- [ ] Rewrite `useAuth` to use Supabase directly
-- [ ] Update all API calls to include `Authorization: Bearer` header
-- [ ] Remove `/api/auth/me` calls (replace with `supabase.auth.getUser()`)
+- [x] Rewrite `useAuth` to use Supabase directly (Done via `AuthContext`)
+- [x] Update all API calls to include `Authorization: Bearer` header
+- [x] Remove `/api/auth/me` calls (replace with `supabase.auth.getUser()`)
 
 **Phase 4: Admin Migration (Week 4)**
-- [ ] Add `is_admin` to Supabase user metadata
-- [ ] Update admin checks in `ProtectedAdminRoute`
+- [x] Add `is_admin` to Supabase user metadata
+- [x] Update admin checks in `ProtectedAdminRoute`
 - [ ] Migrate existing admin users
 
 **Phase 5: Cleanup (Week 5)**
