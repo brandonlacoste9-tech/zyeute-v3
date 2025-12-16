@@ -162,7 +162,7 @@ def check_vitals(metadata: dict) -> dict:
     
     logger.info(f"🩺 [DOCTOR] Vitals: CPU {cpu}% | RAM {memory}% | API {api_status}")
     
-    return {"status": "success", "result": report}
+    return {"status": "completed", "result": report}
 
 
 def cleanup_systems(metadata: dict) -> dict:
@@ -184,7 +184,7 @@ def cleanup_systems(metadata: dict) -> dict:
     time.sleep(1)
     
     logger.info("✅ [DOCTOR] Cleanup complete")
-    return {"status": "success", "result": "Systems cleaned and optimized."}
+    return {"status": "completed", "result": "Systems cleaned and optimized."}
 
 
 def handle_task(command: str, metadata: dict) -> dict:

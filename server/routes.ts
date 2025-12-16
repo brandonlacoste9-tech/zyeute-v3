@@ -154,7 +154,7 @@ export async function registerRoutes(
         return res.status(404).json({ error: "User not found" });
       }
 
-      const { password: _, ...safeUser } = user;
+      const safeUser = user;
 
       // Check if current user follows this user
       let isFollowing = false;
@@ -186,7 +186,7 @@ export async function registerRoutes(
         return res.status(404).json({ error: "User not found" });
       }
 
-      const { password: _, ...safeUser } = updated;
+      const safeUser = updated;
       res.json({ user: safeUser });
     } catch (error) {
       console.error("Update user error:", error);
@@ -422,8 +422,7 @@ export async function registerRoutes(
       const followers = await storage.getFollowers(req.params.id);
       res.json({
         followers: followers.map(f => {
-          const { password: _, ...safe } = f;
-          return safe;
+          return f;
         })
       });
     } catch (error) {
@@ -438,8 +437,7 @@ export async function registerRoutes(
       const following = await storage.getFollowing(req.params.id);
       res.json({
         following: following.map(f => {
-          const { password: _, ...safe } = f;
-          return safe;
+          return f;
         })
       });
     } catch (error) {

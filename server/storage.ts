@@ -1,14 +1,14 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import { 
+import {
   users, posts, comments, follows, postReactions, commentReactions,
   stories, storyViews, notifications, gifts,
   type User, type InsertUser, type Post, type InsertPost,
   type Comment, type InsertComment, type Follow, type InsertFollow,
   type Story, type InsertStory, type Notification, type InsertNotification,
   type Gift, type InsertGift, type GiftType, type UpsertUser
-} from "../shared/schema.js";  
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+} from "../shared/schema.js";
+import { eq, and, desc, sql, inArray, isNull, or } from "drizzle-orm";
 import { traceDatabase } from "./tracer.js";
 
 const { Pool } = pg;
@@ -29,7 +29,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   createUserFromOAuth(userData: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
-  
+
   // Posts
   getPost(id: string): Promise<(Post & { user: User }) | undefined>;
   getPostsByUser(userId: string, limit?: number): Promise<Post[]>;
@@ -38,35 +38,35 @@ export interface IStorage {
   createPost(post: InsertPost): Promise<Post>;
   deletePost(id: string): Promise<boolean>;
   incrementPostViews(id: string): Promise<void>;
-  
+
   // Comments
   getPostComments(postId: string): Promise<(Comment & { user: User; isFired: boolean })[]>;
   createComment(comment: InsertComment): Promise<Comment>;
   deleteComment(id: string): Promise<boolean>;
-  
+
   // Reactions
   togglePostReaction(postId: string, userId: string): Promise<{ added: boolean; newCount: number }>;
   toggleCommentReaction(commentId: string, userId: string): Promise<{ added: boolean; newCount: number }>;
   hasUserFiredPost(postId: string, userId: string): Promise<boolean>;
-  
+
   // Follows
   followUser(followerId: string, followingId: string): Promise<boolean>;
   unfollowUser(followerId: string, followingId: string): Promise<boolean>;
   isFollowing(followerId: string, followingId: string): Promise<boolean>;
   getFollowers(userId: string): Promise<User[]>;
   getFollowing(userId: string): Promise<User[]>;
-  
+
   // Stories
   getActiveStories(userId?: string): Promise<(Story & { user: User; isViewed: boolean })[]>;
   createStory(story: InsertStory): Promise<Story>;
   markStoryViewed(storyId: string, userId: string): Promise<void>;
-  
+
   // Notifications
   getUserNotifications(userId: string, limit?: number): Promise<(Notification & { fromUser?: User })[]>;
   createNotification(notification: InsertNotification): Promise<Notification>;
   markNotificationRead(id: string): Promise<void>;
   markAllNotificationsRead(userId: string): Promise<void>;
-  
+
   // Gifts
   createGift(gift: InsertGift): Promise<Gift>;
   getPostGiftCount(postId: string): Promise<number>;
@@ -137,9 +137,9 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(posts.userId, users.id))
       .where(eq(posts.id, id))
       .limit(1);
-    
+
     if (!result[0] || !result[0].users) return undefined;
-    
+
     return {
       ...result[0].posts,
       user: result[0].users,
@@ -151,7 +151,7 @@ export class DatabaseStorage implements IStorage {
       .from(posts)
       .where(and(
         eq(posts.userId, userId),
-        eq(posts.isHidden, false)
+        or(eq(posts.isHidden, false), isNull(posts.isHidden))
       ))
       .orderBy(desc(posts.createdAt))
       .limit(limit);
@@ -159,18 +159,18 @@ export class DatabaseStorage implements IStorage {
 
   async getFeedPosts(userId: string, page: number, limit: number): Promise<(Post & { user: User; isFired: boolean })[]> {
     const offset = page * limit;
-    
+
     // Get users that the current user follows
     const followingUsers = await db
       .select({ id: follows.followingId })
       .from(follows)
       .where(eq(follows.followerId, userId));
-    
+
     const followingIds = followingUsers.map(f => f.id);
-    
+
     // Include the current user's posts too
     followingIds.push(userId);
-    
+
     // Get posts from followed users
     const result = await db
       .select({
@@ -181,7 +181,7 @@ export class DatabaseStorage implements IStorage {
       .from(posts)
       .leftJoin(users, eq(posts.userId, users.id))
       .leftJoin(
-        postReactions, 
+        postReactions,
         and(
           eq(postReactions.postId, posts.id),
           eq(postReactions.userId, userId)
@@ -189,13 +189,13 @@ export class DatabaseStorage implements IStorage {
       )
       .where(and(
         inArray(posts.userId, followingIds.length > 0 ? followingIds : [userId]),
-        eq(posts.isHidden, false),
+        or(eq(posts.isHidden, false), isNull(posts.isHidden)),
         eq(posts.visibility, 'public')
       ))
       .orderBy(desc(posts.createdAt))
       .limit(limit)
       .offset(offset);
-    
+
     return result
       .filter(r => r.user)
       .map(r => ({
@@ -207,7 +207,7 @@ export class DatabaseStorage implements IStorage {
 
   async getExplorePosts(page: number, limit: number): Promise<(Post & { user: User })[]> {
     const offset = page * limit;
-    
+
     const result = await db
       .select({
         post: posts,
@@ -216,13 +216,13 @@ export class DatabaseStorage implements IStorage {
       .from(posts)
       .leftJoin(users, eq(posts.userId, users.id))
       .where(and(
-        eq(posts.isHidden, false),
+        or(eq(posts.isHidden, false), isNull(posts.isHidden)),
         eq(posts.visibility, 'public')
       ))
       .orderBy(desc(posts.fireCount), desc(posts.createdAt))
       .limit(limit)
       .offset(offset);
-    
+
     return result
       .filter(r => r.user)
       .map(r => ({
@@ -233,26 +233,26 @@ export class DatabaseStorage implements IStorage {
 
   async createPost(post: InsertPost): Promise<Post> {
     const result = await db.insert(posts).values(post).returning();
-    
+
     // Increment user's post count
     await db.update(users)
       .set({ postsCount: sql`${users.postsCount} + 1` })
       .where(eq(users.id, post.userId));
-    
+
     return result[0];
   }
 
   async deletePost(id: string): Promise<boolean> {
     const post = await db.select().from(posts).where(eq(posts.id, id)).limit(1);
     if (!post[0]) return false;
-    
+
     await db.delete(posts).where(eq(posts.id, id));
-    
+
     // Decrement user's post count
     await db.update(users)
       .set({ postsCount: sql`${users.postsCount} - 1` })
       .where(eq(users.id, post[0].userId));
-    
+
     return true;
   }
 
@@ -275,7 +275,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(commentReactions, eq(commentReactions.commentId, comments.id))
       .where(eq(comments.postId, postId))
       .orderBy(desc(comments.createdAt));
-    
+
     return result
       .filter(r => r.user)
       .map(r => ({
@@ -287,26 +287,26 @@ export class DatabaseStorage implements IStorage {
 
   async createComment(comment: InsertComment): Promise<Comment> {
     const result = await db.insert(comments).values(comment).returning();
-    
+
     // Increment post's comment count
     await db.update(posts)
       .set({ commentCount: sql`${posts.commentCount} + 1` })
       .where(eq(posts.id, comment.postId));
-    
+
     return result[0];
   }
 
   async deleteComment(id: string): Promise<boolean> {
     const comment = await db.select().from(comments).where(eq(comments.id, id)).limit(1);
     if (!comment[0]) return false;
-    
+
     await db.delete(comments).where(eq(comments.id, id));
-    
+
     // Decrement post's comment count
     await db.update(posts)
       .set({ commentCount: sql`${posts.commentCount} - 1` })
       .where(eq(posts.id, comment[0].postId));
-    
+
     return true;
   }
 
@@ -320,14 +320,14 @@ export class DatabaseStorage implements IStorage {
         eq(postReactions.userId, userId)
       ))
       .limit(1);
-    
+
     if (existing[0]) {
       // Remove reaction
       await db.delete(postReactions).where(eq(postReactions.id, existing[0].id));
       await db.update(posts)
         .set({ fireCount: sql`${posts.fireCount} - 1` })
         .where(eq(posts.id, postId));
-      
+
       const post = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
       return { added: false, newCount: post[0]?.fireCount || 0 };
     } else {
@@ -336,7 +336,7 @@ export class DatabaseStorage implements IStorage {
       await db.update(posts)
         .set({ fireCount: sql`${posts.fireCount} + 1` })
         .where(eq(posts.id, postId));
-      
+
       const post = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
       return { added: true, newCount: post[0]?.fireCount || 0 };
     }
@@ -351,13 +351,13 @@ export class DatabaseStorage implements IStorage {
         eq(commentReactions.userId, userId)
       ))
       .limit(1);
-    
+
     if (existing[0]) {
       await db.delete(commentReactions).where(eq(commentReactions.id, existing[0].id));
       await db.update(comments)
         .set({ fireCount: sql`${comments.fireCount} - 1` })
         .where(eq(comments.id, commentId));
-      
+
       const comment = await db.select().from(comments).where(eq(comments.id, commentId)).limit(1);
       return { added: false, newCount: comment[0]?.fireCount || 0 };
     } else {
@@ -365,7 +365,7 @@ export class DatabaseStorage implements IStorage {
       await db.update(comments)
         .set({ fireCount: sql`${comments.fireCount} + 1` })
         .where(eq(comments.id, commentId));
-      
+
       const comment = await db.select().from(comments).where(eq(comments.id, commentId)).limit(1);
       return { added: true, newCount: comment[0]?.fireCount || 0 };
     }
@@ -380,14 +380,14 @@ export class DatabaseStorage implements IStorage {
         eq(postReactions.userId, userId)
       ))
       .limit(1);
-    
+
     return result.length > 0;
   }
 
   // Follows
   async followUser(followerId: string, followingId: string): Promise<boolean> {
     if (followerId === followingId) return false;
-    
+
     const existing = await db
       .select()
       .from(follows)
@@ -396,20 +396,20 @@ export class DatabaseStorage implements IStorage {
         eq(follows.followingId, followingId)
       ))
       .limit(1);
-    
+
     if (existing[0]) return false;
-    
+
     await db.insert(follows).values({ followerId, followingId });
-    
+
     // Update counts
     await db.update(users)
       .set({ followingCount: sql`${users.followingCount} + 1` })
       .where(eq(users.id, followerId));
-    
+
     await db.update(users)
       .set({ followersCount: sql`${users.followersCount} + 1` })
       .where(eq(users.id, followingId));
-    
+
     return true;
   }
 
@@ -421,18 +421,18 @@ export class DatabaseStorage implements IStorage {
         eq(follows.followingId, followingId)
       ))
       .returning();
-    
+
     if (result.length === 0) return false;
-    
+
     // Update counts
     await db.update(users)
       .set({ followingCount: sql`${users.followingCount} - 1` })
       .where(eq(users.id, followerId));
-    
+
     await db.update(users)
       .set({ followersCount: sql`${users.followersCount} - 1` })
       .where(eq(users.id, followingId));
-    
+
     return true;
   }
 
@@ -445,7 +445,7 @@ export class DatabaseStorage implements IStorage {
         eq(follows.followingId, followingId)
       ))
       .limit(1);
-    
+
     return result.length > 0;
   }
 
@@ -455,7 +455,7 @@ export class DatabaseStorage implements IStorage {
       .from(follows)
       .leftJoin(users, eq(follows.followerId, users.id))
       .where(eq(follows.followingId, userId));
-    
+
     return result.filter(r => r.user).map(r => r.user!);
   }
 
@@ -465,14 +465,14 @@ export class DatabaseStorage implements IStorage {
       .from(follows)
       .leftJoin(users, eq(follows.followingId, users.id))
       .where(eq(follows.followerId, userId));
-    
+
     return result.filter(r => r.user).map(r => r.user!);
   }
 
   // Stories
   async getActiveStories(userId?: string): Promise<(Story & { user: User; isViewed: boolean })[]> {
     const now = new Date();
-    
+
     const result = await db
       .select({
         story: stories,
@@ -490,7 +490,7 @@ export class DatabaseStorage implements IStorage {
       )
       .where(sql`${stories.expiresAt} > ${now}`)
       .orderBy(desc(stories.createdAt));
-    
+
     return result
       .filter(r => r.user)
       .map(r => ({
@@ -514,7 +514,7 @@ export class DatabaseStorage implements IStorage {
         eq(storyViews.userId, userId)
       ))
       .limit(1);
-    
+
     if (!existing[0]) {
       await db.insert(storyViews).values({ storyId, userId });
       await db.update(stories)
@@ -535,7 +535,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notifications.userId, userId))
       .orderBy(desc(notifications.createdAt))
       .limit(limit);
-    
+
     return result.map(r => ({
       ...r.notification,
       fromUser: r.fromUser || undefined,
@@ -565,12 +565,12 @@ export class DatabaseStorage implements IStorage {
   // Gifts
   async createGift(gift: InsertGift): Promise<Gift> {
     const result = await db.insert(gifts).values(gift).returning();
-    
+
     // Increment gift count on post
     await db.update(posts)
       .set({ giftCount: sql`${posts.giftCount} + 1` })
       .where(eq(posts.id, gift.postId));
-    
+
     return result[0];
   }
 
@@ -592,7 +592,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(users, eq(gifts.senderId, users.id))
       .where(eq(gifts.postId, postId))
       .orderBy(desc(gifts.createdAt));
-    
+
     return result.map(r => ({
       ...r.gift,
       sender: r.sender,
@@ -612,7 +612,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(gifts.recipientId, userId))
       .orderBy(desc(gifts.createdAt))
       .limit(limit);
-    
+
     return result.map(r => ({
       ...r.gift,
       sender: r.sender,

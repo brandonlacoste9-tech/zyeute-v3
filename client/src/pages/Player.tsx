@@ -34,15 +34,16 @@ export const Player: React.FC = () => {
     setIsLoading(true);
     try {
       let query = supabase
-        .from('posts')
+        .from('publications')
         .select(
           `
           *,
           user:user_profiles!user_id(*)
         `
         )
-        .eq('visibility', 'public')
-        .eq('is_hidden', false)
+        .eq('visibilite', 'public')
+        .is('est_masque', null)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(30);
 
@@ -50,23 +51,25 @@ export const Player: React.FC = () => {
       if (startingPostId) {
         // First, get the starting post and its position
         const { data: startingPost } = await supabase
-          .from('posts')
+          .from('publications')
           .select('created_at')
           .eq('id', startingPostId)
+          .is('deleted_at', null)
           .single();
 
         if (startingPost) {
           // Fetch posts around this timestamp
           query = supabase
-            .from('posts')
+            .from('publications')
             .select(
               `
               *,
               user:user_profiles!user_id(*)
             `
             )
-            .eq('visibility', 'public')
-            .eq('is_hidden', false)
+            .eq('visibilite', 'public')
+            .is('est_masque', null)
+            .is('deleted_at', null)
             .order('created_at', { ascending: false })
             .limit(30);
         }
@@ -81,7 +84,7 @@ export const Player: React.FC = () => {
         if (startingPostId && data.findIndex((p) => p.id === startingPostId) === -1) {
           // Fetch the starting post separately
           const { data: startingPostData } = await supabase
-            .from('posts')
+            .from('publications')
             .select(
               `
               *,
@@ -89,6 +92,7 @@ export const Player: React.FC = () => {
             `
             )
             .eq('id', startingPostId)
+            .is('deleted_at', null)
             .single();
 
           if (startingPostData) {
@@ -115,15 +119,16 @@ export const Player: React.FC = () => {
     try {
       const lastPost = posts[posts.length - 1];
       const { data, error } = await supabase
-        .from('posts')
+        .from('publications')
         .select(
           `
           *,
           user:user_profiles!user_id(*)
         `
         )
-        .eq('visibility', 'public')
-        .eq('is_hidden', false)
+        .eq('visibilite', 'public')
+        .is('est_masque', null)
+        .is('deleted_at', null)
         .lt('created_at', lastPost.created_at)
         .order('created_at', { ascending: false })
         .limit(20);

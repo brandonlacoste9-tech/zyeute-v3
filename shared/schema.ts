@@ -16,7 +16,7 @@ import { z } from "zod";
 import { relations } from "drizzle-orm";
 
 // Enums
-export const visibilityEnum = pgEnum('visibility', ['public', 'followers', 'private']);
+export const visibilityEnum = pgEnum('visibility', ['public', 'amis', 'prive']);
 export const regionEnum = pgEnum('region', [
   'montreal', 'quebec', 'gatineau', 'sherbrooke', 'trois-rivieres',
   'saguenay', 'levis', 'terrebonne', 'laval', 'gaspesie', 'other'
@@ -28,43 +28,34 @@ export const giftTypeEnum = pgEnum('gift_type', [
 // Users Table - mapped to user_profiles (FK to auth.users.id)
 export const users = pgTable("user_profiles", {
   id: uuid("id").primaryKey(), // FK to auth.users.id
-  replitId: varchar("replit_id", { length: 50 }).unique(), // Replit OAuth sub claim
   username: varchar("username", { length: 50 }).notNull().unique(),
   email: varchar("email", { length: 255 }).unique(), // Made optional for OAuth users
   displayName: varchar("display_name", { length: 100 }),
   bio: text("bio"),
   avatarUrl: text("avatar_url"),
-  location: varchar("location", { length: 100 }),
-  region: regionEnum("region"),
-  password: varchar("password", { length: 255 }), // Optional for OAuth-only users
+  region: text("region"),
   isAdmin: boolean("is_admin").default(false),
   subscriptionTier: varchar("subscription_tier", { length: 20 }).default('free'),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Posts Table with performance indexes
-export const posts = pgTable("posts", {
+// Posts Table mapped to publications
+export const posts = pgTable("publications", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  type: varchar("type", { length: 20 }).notNull(), // 'photo', 'video'
   mediaUrl: text("media_url").notNull(),
-  thumbnailUrl: text("thumbnail_url"),
   caption: text("caption"),
-  hashtags: text("hashtags").array(),
-  region: regionEnum("region"),
-  visibility: visibilityEnum("visibility").default('public'),
-  fireCount: integer("fire_count").default(0),
-  commentCount: integer("comment_count").default(0),
-  viewCount: integer("view_count").default(0),
-  giftCount: integer("gift_count").default(0),
-  isHidden: boolean("is_hidden").default(false),
+  visibility: text("visibilite").default('public'),
+  fireCount: integer("reactions_count").default(0),
+  commentCount: integer("comments_count").default(0),
+  isHidden: boolean("est_masque").default(false),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
-  userIdIdx: index("posts_user_id_idx").on(table.userId),
-  createdAtIdx: index("posts_created_at_idx").on(table.createdAt),
-  userCreatedIdx: index("posts_user_created_idx").on(table.userId, table.createdAt),
+  userIdIdx: index("publications_user_id_idx").on(table.userId),
+  createdAtIdx: index("publications_created_at_idx").on(table.createdAt),
+  userCreatedIdx: index("publications_user_created_idx").on(table.userId, table.createdAt),
 }));
 
 // Comments Table
@@ -189,7 +180,6 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
 export const insertUserSchema = createInsertSchema(users, {
   email: z.string().email().optional(),
   username: z.string().min(3).max(50),
-  password: z.string().min(6).optional(),
 }).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Schema for upserting users via Replit Auth (OAuth)

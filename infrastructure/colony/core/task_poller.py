@@ -352,14 +352,14 @@ def publish_generated_content(task_id, result_data, prompt, media_type='video'):
         # 3. Create the Post
         logger.info(f"🚀 Publishing task {task_id} to the Main Feed as Ti-Guy...")
         
-        # Using 'publications' table as per DB inspection and Feed.tsx usage
+        # Using 'publications' table as per DB inspection
         # Columns: user_id, media_url, caption, visibilite, created_at
         
         post_payload = {
             'user_id': ti_guy_id,
             'caption': f"Generated via Colony OS 🐝\nPrompt: {prompt}",
             'media_url': media_url,
-            # 'type': media_type, # Column does not exist in 'publications', inferred by URL in frontend
+            # 'type': media_type, # Column might not exist in legacy table
             'visibilite': 'public',
             'created_at': datetime.now().isoformat()
         }

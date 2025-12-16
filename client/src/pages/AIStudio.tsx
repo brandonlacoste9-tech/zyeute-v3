@@ -7,6 +7,7 @@ import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Button } from '../components/Button';
+import { BottomNav } from '../components/BottomNav';
 import { generateImage } from '../services/api';
 import { toast } from '../components/Toast';
 
@@ -42,10 +43,10 @@ export const AIStudio: React.FC = () => {
       toast.warning('Entre une description d\'abord!');
       return;
     }
-    
+
     setIsGeneratingImage(true);
     setGeneratedImage(null);
-    
+
     try {
       const result = await generateImage(prompt, aspectRatio);
       if (result) {
@@ -66,21 +67,21 @@ export const AIStudio: React.FC = () => {
       toast.warning('Sélectionne une image source d\'abord!');
       return;
     }
-    
+
     setIsGeneratingVideo(true);
     setGeneratedVideo(null);
-    
+
     try {
       const response = await fetch('/api/ai/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ 
-          imageUrl: sourceImage, 
+        body: JSON.stringify({
+          imageUrl: sourceImage,
           prompt: prompt || 'Anime cette image avec un mouvement naturel',
         }),
       });
-      
+
       const data = await response.json();
       if (data.videoUrl) {
         setGeneratedVideo(data.videoUrl);
@@ -123,28 +124,26 @@ export const AIStudio: React.FC = () => {
   return (
     <div className="min-h-screen bg-black">
       <Header title="AI Studio" showBack />
-      
+
       <main className="max-w-2xl mx-auto p-4 space-y-6">
         {/* Tab Switcher */}
         <div className="flex rounded-xl bg-zinc-900 p-1 border border-gold-500/20">
           <button
             onClick={() => setActiveTab('image')}
-            className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
-              activeTab === 'image'
+            className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${activeTab === 'image'
                 ? 'bg-gold-gradient text-black'
                 : 'text-gold-400 hover:bg-zinc-800'
-            }`}
+              }`}
             data-testid="tab-image"
           >
             🎨 Image Flux
           </button>
           <button
             onClick={() => setActiveTab('video')}
-            className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
-              activeTab === 'video'
+            className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${activeTab === 'video'
                 ? 'bg-gold-gradient text-black'
                 : 'text-gold-400 hover:bg-zinc-800'
-            }`}
+              }`}
             data-testid="tab-video"
           >
             🎬 Vidéo Kling
@@ -165,7 +164,7 @@ export const AIStudio: React.FC = () => {
                 className="w-full min-h-[120px] resize-none rounded-xl border border-gold-500/20 bg-black/50 p-4 text-white placeholder:text-zinc-500 focus:border-gold-500 focus:outline-none"
                 data-testid="input-prompt"
               />
-              
+
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gold-300">
                   Ratio d'aspect
@@ -175,11 +174,10 @@ export const AIStudio: React.FC = () => {
                     <button
                       key={ratio.value}
                       onClick={() => setAspectRatio(ratio.value)}
-                      className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                        aspectRatio === ratio.value
+                      className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${aspectRatio === ratio.value
                           ? 'bg-gold-500 text-black'
                           : 'bg-zinc-800 text-gold-300 hover:bg-zinc-700'
-                      }`}
+                        }`}
                       data-testid={`button-ratio-${ratio.value}`}
                     >
                       {ratio.label}
@@ -226,7 +224,7 @@ export const AIStudio: React.FC = () => {
                     data-testid="img-generated"
                   />
                 </div>
-                
+
                 <div className="flex gap-3">
                   <Button
                     onClick={() => handleDownload(generatedImage, 'image')}
@@ -267,7 +265,7 @@ export const AIStudio: React.FC = () => {
               <label className="block text-sm font-medium text-gold-300">
                 Image source
               </label>
-              
+
               {sourceImage ? (
                 <div className="relative">
                   <img
@@ -354,7 +352,7 @@ export const AIStudio: React.FC = () => {
                     data-testid="video-generated"
                   />
                 </div>
-                
+
                 <div className="flex gap-3">
                   <Button
                     onClick={() => handleDownload(generatedVideo, 'video')}
@@ -410,6 +408,9 @@ export const AIStudio: React.FC = () => {
           <p className="text-xs text-gold-500/60 mt-1">Propulsé par l'innovation québécoise</p>
         </footer>
       </main>
+
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 };
