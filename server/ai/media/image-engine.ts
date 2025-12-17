@@ -38,16 +38,21 @@ export async function generateImage(params: ImageGenerationParams): Promise<Imag
 
     try {
         // Map size preference to FAL format
-        const sizeMap: Record<string, string> = {
+        const sizeMap = {
             'square': 'square_hd',
             'portrait': 'portrait_16_9',
             'landscape': 'landscape_16_9'
-        };
+        } as const;
+
+        type ImageSizeType = typeof sizeMap[keyof typeof sizeMap];
+        const selectedSize: ImageSizeType = (imageSize in sizeMap)
+            ? sizeMap[imageSize as keyof typeof sizeMap]
+            : 'square_hd';
 
         const result = await fal.subscribe('fal-ai/flux/schnell', {
             input: {
                 prompt,
-                image_size: sizeMap[imageSize] || 'square_hd',
+                image_size: selectedSize,
                 num_inference_steps: 4,
                 num_images: 1,
             },

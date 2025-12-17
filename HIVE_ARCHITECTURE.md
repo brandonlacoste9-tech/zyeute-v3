@@ -73,18 +73,18 @@ server/ai/
 
 ## 🐝 Bee Registry (10 Bees)
 
-| Bee ID | Name | Core | Capabilities | Model |
-|--------|------|------|--------------|-------|
-| `ti-guy-chat` | Ti-Guy Chat | worker | chat | deepseek |
-| `studio-caption` | Caption Generator | worker | caption | deepseek |
-| `studio-image` | Image Generator | worker | image | flux |
-| `studio-video` | Video Generator | worker | video | hunyuan_video |
-| `post-composer` | Post Composer | worker | compose | deepseek |
-| `moderation` | Content Moderation | guardian | moderation | deepseek |
-| `media-budget` | Budget Tracker | guardian | budget | mistral |
-| `analytics-summarizer` | Analytics | architect | analytics | deepseek |
-| `issue-rewrite` | Issue Rewrite | architect | chat | deepseek |
-| `dream-expansion` | Dream Expansion | architect | chat | deepseek |
+| Bee ID | Name | Core | Model | Status |
+|--------|------|------|-------|--------|
+| `ti-guy-chat` | Ti-Guy Chat | worker | DeepSeek | 🟢 LIVE |
+| `studio-caption` | Caption Generator | worker | DeepSeek | 🟢 LIVE |
+| `studio-image` | Image Generator | worker | FAL/Flux | 🟢 LIVE |
+| `studio-video` | Video Generator | worker | FAL/Kling | 🟢 LIVE |
+| `post-composer` | Post Composer | worker | DeepSeek + Flux | 🟢 LIVE |
+| `moderation` | Content Moderation | guardian | DeepSeek | 🟢 LIVE |
+| `media-budget` | Budget Tracker | guardian | Mistral | 🟡 Stub |
+| `analytics-summarizer` | Analytics | architect | DeepSeek | 🟢 LIVE |
+| `issue-rewrite` | Issue Rewrite | architect | DeepSeek | 🟡 Stub |
+| `dream-expansion` | Dream Expansion | architect | DeepSeek | 🟡 Stub |
 
 ---
 
