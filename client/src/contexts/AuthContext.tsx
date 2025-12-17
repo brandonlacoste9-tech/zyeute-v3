@@ -54,8 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         async function initializeAuth() {
             try {
-                // 1. Check Supabase Session
-                const { data: { session: initialSession } } = await supabase.auth.getSession();
+                // 1. Check Supabase Session with Timeout
+                // Emergency Fix: Race against 5s timeout
+                const sessionPromise = supabase.auth.getSession();
+                const timeoutPromise = new Promise<{ data: { session: Session | null } }>((_, reject) =>
+                    setTimeout(() => reject(new Error('Auth check timed out')), 5000)
+                );
+
+                const { data: { session: initialSession } } = await Promise.race([sessionPromise, timeoutPromise]);
 
                 if (initialSession?.user) {
                     if (mounted) {
