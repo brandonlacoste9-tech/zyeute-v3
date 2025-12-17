@@ -14,6 +14,17 @@ const Home: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+
+    // EMERGENCY FAILSAFE: Force decision after 5 seconds
+    const emergencyTimeout = setTimeout(() => {
+      console.warn('⚠️ Home auth check timeout - forcing guest mode');
+      if (mounted) {
+        const guestMode = localStorage.getItem(GUEST_MODE_KEY);
+        setIsAuthenticated(guestMode === 'true');
+      }
+    }, 5000);
+
     const checkAuth = async () => {
       try {
         // Check for Supabase authenticated user
@@ -21,7 +32,10 @@ const Home: React.FC = () => {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (user) {
-          setIsAuthenticated(true);
+          if (mounted) {
+            setIsAuthenticated(true);
+            clearTimeout(emergencyTimeout);
+          }
           return;
         }
 
@@ -34,7 +48,10 @@ const Home: React.FC = () => {
 
           if (age < GUEST_SESSION_DURATION) {
             // Valid guest session - treat as authenticated
-            setIsAuthenticated(true);
+            if (mounted) {
+              setIsAuthenticated(true);
+              clearTimeout(emergencyTimeout);
+            }
             return;
           } else {
             // Guest session expired
@@ -44,7 +61,10 @@ const Home: React.FC = () => {
         }
 
         // No valid auth or guest session
-        setIsAuthenticated(false);
+        if (mounted) {
+          setIsAuthenticated(false);
+          clearTimeout(emergencyTimeout);
+        }
       } catch (error) {
         console.error('Authentication check failed:', error);
 
@@ -55,16 +75,27 @@ const Home: React.FC = () => {
         if (guestMode === 'true' && guestTimestamp) {
           const age = Date.now() - parseInt(guestTimestamp, 10);
           if (age < GUEST_SESSION_DURATION) {
-            setIsAuthenticated(true);
+            if (mounted) {
+              setIsAuthenticated(true);
+              clearTimeout(emergencyTimeout);
+            }
             return;
           }
         }
 
-        setIsAuthenticated(false);
+        if (mounted) {
+          setIsAuthenticated(false);
+          clearTimeout(emergencyTimeout);
+        }
       }
     };
 
     checkAuth();
+
+    return () => {
+      mounted = false;
+      clearTimeout(emergencyTimeout);
+    };
   }, []);
 
   if (isAuthenticated === null) {
