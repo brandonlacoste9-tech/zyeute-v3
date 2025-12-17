@@ -1,10 +1,11 @@
 /**
  * Studio API Routes
  * Endpoints for AI Hive media generation
+ * Updated to use the new Orchestrator Core
  */
 
 import express from 'express';
-import { hiveOrchestrator } from '../ai/orchestrator.js';
+import { orchestrator } from '../ai/cores/orchestrator-core.js';
 import type { HiveTask } from '../ai/types.js';
 import crypto from 'crypto';
 
@@ -31,7 +32,7 @@ router.post('/generate-image', async (req, res) => {
             createdAt: new Date(),
         };
 
-        const result = await hiveOrchestrator.handleTask(task);
+        const result = await orchestrator.handleHiveTask(task);
 
         if (!result.success) {
             return res.status(500).json({ error: result.error });
@@ -46,7 +47,7 @@ router.post('/generate-image', async (req, res) => {
 
 /**
  * POST /api/studio/generate-video
- * Generate a video from a text prompt (placeholder)
+ * Generate a video from a text prompt
  */
 router.post('/generate-video', async (req, res) => {
     try {
@@ -65,7 +66,7 @@ router.post('/generate-video', async (req, res) => {
             createdAt: new Date(),
         };
 
-        const result = await hiveOrchestrator.handleTask(task);
+        const result = await orchestrator.handleHiveTask(task);
 
         if (!result.success) {
             return res.status(500).json({ error: result.error });
@@ -80,7 +81,7 @@ router.post('/generate-video', async (req, res) => {
 
 /**
  * POST /api/studio/compose-post
- * Generate a complete post with image and caption
+ * Generate a complete post
  */
 router.post('/compose-post', async (req, res) => {
     try {
@@ -99,7 +100,7 @@ router.post('/compose-post', async (req, res) => {
             createdAt: new Date(),
         };
 
-        const result = await hiveOrchestrator.handleTask(task);
+        const result = await orchestrator.handleHiveTask(task);
 
         if (!result.success) {
             return res.status(500).json({ error: result.error });
@@ -133,27 +134,13 @@ router.post('/chat', async (req, res) => {
             createdAt: new Date(),
         };
 
-        const result = await hiveOrchestrator.handleTask(task);
+        const result = await orchestrator.handleHiveTask(task);
 
         if (!result.success) {
             return res.status(500).json({ error: result.error });
         }
 
         res.json({ response: result.data });
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        res.status(500).json({ error: errorMessage });
-    }
-});
-
-/**
- * GET /api/studio/stats
- * Get orchestrator statistics
- */
-router.get('/stats', async (req, res) => {
-    try {
-        const stats = hiveOrchestrator.getStats();
-        res.json(stats);
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         res.status(500).json({ error: errorMessage });

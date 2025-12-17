@@ -12,6 +12,7 @@ import { executeStudioCaptionBee } from './bees/studio-caption.js';
 import { executeStudioImageBee } from './bees/studio-image.js';
 import { executeStudioVideoBee } from './bees/studio-video.js';
 import { executePostComposerBee } from './bees/post-composer.js';
+import { recordTask } from '../colony/metrics-bridge.js';
 
 /**
  * Hive Orchestrator - Routes tasks to appropriate bees
@@ -71,6 +72,10 @@ export class HiveOrchestrator {
 
             const executionTime = Date.now() - startTime;
             console.log(`[Hive Orchestrator] Task completed in ${executionTime}ms`);
+
+            // Record metrics for Colony OS
+            const cost = (result as any)?.metadata?.cost || 0;
+            recordTask(task.type, executionTime, cost);
 
             return {
                 taskId: task.id,

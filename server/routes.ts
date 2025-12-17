@@ -1159,5 +1159,10 @@ export async function registerRoutes(
     }
   });
 
+  // Start Colony OS metrics reporting
+  const { startMetricsReporting } = await import('./colony/metrics-bridge.js');
+  startMetricsReporting();
+  console.log('✅ Colony OS metrics bridge initialized');
+
   return httpServer;
 }

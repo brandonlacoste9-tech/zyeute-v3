@@ -1,13 +1,12 @@
 /**
  * AI Hive - Bee Registry
- * Central registry of all bees (TypeScript + Python)
+ * Central registry of all bees
  */
 
 import type { BeeDefinition, BeeCapability, BeeCore } from './types';
 
 export const BEE_REGISTRY: Record<string, BeeDefinition> = {
-    // ======== TypeScript Bees (New) ========
-
+    // ======== Ti-Guy Chat (Worker) ========
     'ti-guy-chat': {
         id: 'ti-guy-chat',
         name: 'Ti-Guy Chat',
@@ -17,6 +16,7 @@ export const BEE_REGISTRY: Record<string, BeeDefinition> = {
         model: 'deepseek',
     },
 
+    // ======== Studio Bees (Workers) ========
     'studio-caption': {
         id: 'studio-caption',
         name: 'Studio Caption Generator',
@@ -48,8 +48,18 @@ export const BEE_REGISTRY: Record<string, BeeDefinition> = {
         id: 'post-composer',
         name: 'Post Composer',
         core: 'worker',
-        capabilities: ['compose', 'caption'],
+        capabilities: ['compose'],
         description: 'Composes complete posts with media + caption',
+        model: 'deepseek',
+    },
+
+    // ======== Guardian Bees ========
+    'moderation': {
+        id: 'moderation',
+        name: 'Content Moderation',
+        core: 'guardian',
+        capabilities: ['moderation'],
+        description: 'Review text/media for safety',
         model: 'deepseek',
     },
 
@@ -62,46 +72,32 @@ export const BEE_REGISTRY: Record<string, BeeDefinition> = {
         model: 'mistral',
     },
 
-    // ======== Python Colony Bees (Existing) ========
-
-    'finance-bee': {
-        id: 'finance-bee',
-        name: 'Finance Bee',
-        core: 'worker',
+    // ======== Architect Bees ========
+    'analytics-summarizer': {
+        id: 'analytics-summarizer',
+        name: 'Analytics Summarizer',
+        core: 'architect',
         capabilities: ['analytics'],
-        description: 'Financial analysis and reporting',
+        description: 'Summarizes platform metrics',
         model: 'deepseek',
-        endpoint: 'colony_tasks',
     },
 
-    'health-bee': {
-        id: 'health-bee',
-        name: 'Health Bee',
-        core: 'guardian',
-        capabilities: ['moderation'],
-        description: 'System health checks',
+    'issue-rewrite': {
+        id: 'issue-rewrite',
+        name: 'Issue Rewrite',
+        core: 'architect',
+        capabilities: ['chat'], // Fallback capability or specific 'rewrite' if added
+        description: 'Rewrites and clarifies issue descriptions',
         model: 'deepseek',
-        endpoint: 'colony_tasks',
     },
 
-    'guardian-bee': {
-        id: 'guardian-bee',
-        name: 'Guardian Bee',
-        core: 'guardian',
-        capabilities: ['moderation'],
-        description: 'Content moderation and safety',
+    'dream-expansion': {
+        id: 'dream-expansion',
+        name: 'Dream Expansion',
+        core: 'architect',
+        capabilities: ['chat'], // Fallback
+        description: 'Expands vague ideas into full specs',
         model: 'deepseek',
-        endpoint: 'colony_tasks',
-    },
-
-    'security-bee': {
-        id: 'security-bee',
-        name: 'Security Bee',
-        core: 'guardian',
-        capabilities: ['moderation'],
-        description: 'Security threat detection',
-        model: 'deepseek',
-        endpoint: 'colony_tasks',
     },
 };
 
@@ -126,18 +122,4 @@ export function getBeesByCapability(capability: BeeCapability): BeeDefinition[] 
  */
 export function getBeesByCore(core: BeeCore): BeeDefinition[] {
     return Object.values(BEE_REGISTRY).filter(bee => bee.core === core);
-}
-
-/**
- * Get all TypeScript bees (no endpoint means TypeScript)
- */
-export function getTypescriptBees(): BeeDefinition[] {
-    return Object.values(BEE_REGISTRY).filter(bee => !bee.endpoint);
-}
-
-/**
- * Get all Python Colony bees (have endpoint)
- */
-export function getPythonBees(): BeeDefinition[] {
-    return Object.values(BEE_REGISTRY).filter(bee => bee.endpoint === 'colony_tasks');
 }
