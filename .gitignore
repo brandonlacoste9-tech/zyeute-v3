@@ -23,3 +23,10 @@ server/email-templates.js
 .kiro/steering/byterover-rules.md
 .qoder/rules/byterover-rules.md
 .augment/rules/byterover-rules.md
+
+# Test artifacts
+test-results/
+playwright-report/
+
+# Documentation archive
+.archive/
