@@ -307,8 +307,6 @@ export const Feed: React.FC = () => {
       {/* Premium Chat Button - Ti-Guy Bronze Emblem */}
       <ChatButton isFixed={true} />
 
-      <BottomNav />
-
       {/* Gift Modal */}
       {selectedRecipient && selectedPostId && (
         <GiftModal
