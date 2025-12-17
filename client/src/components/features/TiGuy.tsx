@@ -8,6 +8,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '../Button';
 import { cn } from '../../lib/utils';
+import tiGuyEmblem from '@assets/TI-GUY_NEW_SHARP_1765507001190.jpg';
 
 interface Message {
   id: string;
@@ -58,10 +59,10 @@ const TI_GUY_RESPONSES: Record<string, string[]> = {
 };
 
 const QUICK_ACTIONS = [
-  { label: "Comment ça marche?", key: "help" },
-  { label: "Upload une photo", key: "upload" },
-  { label: "C'est quoi les feux?", key: "fire" },
-  { label: "Devenir VIP?", key: "premium" },
+  { label: "How does it work?", key: "help" },
+  { label: "Upload a photo", key: "upload" },
+  { label: "What are the lights?", key: "fire" },
+  { label: "Become a VIP?", key: "premium" },
 ];
 
 export const TiGuy: React.FC = () => {
@@ -96,7 +97,7 @@ export const TiGuy: React.FC = () => {
     setIsTyping(true);
     setGenerating(true);
     setProgress(0);
-    
+
     // Simulate progress
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
@@ -104,18 +105,18 @@ export const TiGuy: React.FC = () => {
         return next;
       });
     }, 100);
-    
+
     setTimeout(() => {
       const responses = TI_GUY_RESPONSES[responseKey] || TI_GUY_RESPONSES.default;
       const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      
+
       const newMessage: Message = {
         id: Date.now().toString(),
         text: randomResponse,
         sender: 'tiguy',
         timestamp: new Date(),
       };
-      
+
       setProgress(100);
       setMessages((prev) => [...prev, newMessage]);
       setIsTyping(false);
@@ -144,7 +145,7 @@ export const TiGuy: React.FC = () => {
     setIsTyping(true);
     setGenerating(true);
     setProgress(0);
-    
+
     const progressInterval = setInterval(() => {
       setProgress((prev) => Math.min(prev + 5, 90));
     }, 200);
@@ -155,36 +156,36 @@ export const TiGuy: React.FC = () => {
         text: msg.text,
         sender: msg.sender,
       }));
-      
+
       const response = await fetch('/api/ai/tiguy-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           message: messageText,
           conversationHistory: serializedHistory,
         }),
       });
-      
+
       const data = await response.json();
-      
+
       clearInterval(progressInterval);
       setProgress(100);
-      
+
       const aiResponse = data.response || data.error || "Oups! J'ai eu un petit bug. Réessaie! 🦫";
-      
+
       const newMessage: Message = {
         id: Date.now().toString(),
         text: aiResponse,
         sender: 'tiguy',
         timestamp: new Date(),
       };
-      
+
       setMessages((prev) => [...prev, newMessage]);
     } catch (error) {
       clearInterval(progressInterval);
       console.error('Ti-Guy API error:', error);
-      
+
       // Show error message instead of silent fallback
       const newMessage: Message = {
         id: Date.now().toString(),
@@ -238,7 +239,7 @@ export const TiGuy: React.FC = () => {
                 }}
               >
                 <img
-                  src="/ti-guy-logo.jpg?v=2"
+                  src={tiGuyEmblem}
                   alt="Ti-Guy"
                   className="w-full h-full object-cover"
                 />
@@ -256,7 +257,7 @@ export const TiGuy: React.FC = () => {
                   Ti-Guy
                 </h3>
                 <p
-                  className="text-xs"
+                  className="text-xs font-bold tracking-wider"
                   style={{ color: '#8B7355' }}
                 >
                   QUEBEC CA 🦫
@@ -294,14 +295,14 @@ export const TiGuy: React.FC = () => {
               >
                 {message.sender === 'tiguy' && (
                   <div
-                    className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0"
+                    className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0"
                     style={{
                       border: '2px solid #B38600',
                       boxShadow: '0 0 8px rgba(255, 191, 0, 0.3)',
                     }}
                   >
                     <img
-                      src="/ti-guy-logo.jpg"
+                      src={tiGuyEmblem}
                       alt="Ti-Guy"
                       className="w-full h-full object-cover"
                     />
@@ -317,14 +318,14 @@ export const TiGuy: React.FC = () => {
                   style={
                     message.sender === 'user'
                       ? {
-                          background: 'linear-gradient(135deg, #FFD966 0%, #B38600 100%)',
-                          boxShadow: '0 2px 8px rgba(179, 134, 0, 0.4)',
-                        }
+                        background: 'linear-gradient(135deg, #FFD966 0%, #B38600 100%)',
+                        boxShadow: '0 2px 8px rgba(179, 134, 0, 0.4)',
+                      }
                       : {
-                          background: 'linear-gradient(135deg, #2d2218 0%, #1a1512 100%)',
-                          border: '1px solid #4a3b22',
-                          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
-                        }
+                        background: 'linear-gradient(135deg, #2d2218 0%, #1a1512 100%)',
+                        border: '1px solid #4a3b22',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+                      }
                   }
                 >
                   {message.text}
@@ -335,14 +336,14 @@ export const TiGuy: React.FC = () => {
             {isTyping && (
               <div className="flex gap-2 items-center">
                 <div
-                  className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0"
+                  className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0"
                   style={{
                     border: '2px solid #B38600',
                     boxShadow: '0 0 8px rgba(255, 191, 0, 0.3)',
                   }}
                 >
                   <img
-                    src="/ti-guy-logo.jpg"
+                    src={tiGuyEmblem}
                     alt="Ti-Guy"
                     className="w-full h-full object-cover"
                   />
@@ -405,10 +406,10 @@ export const TiGuy: React.FC = () => {
                   <button
                     key={action.key}
                     onClick={() => handleQuickAction(action.key, action.label)}
-                    className="px-3 py-1.5 rounded-full text-xs transition-all hover:scale-105"
+                    className="px-4 py-2 rounded-full text-xs font-medium transition-all hover:scale-105"
                     style={{
-                      background: 'linear-gradient(135deg, #2d2218 0%, #1a1512 100%)',
-                      border: '1px solid #4a3b22',
+                      background: 'rgba(26, 21, 18, 0.8)',
+                      border: '1px solid #B38600',
                       color: '#B38600',
                       boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
                     }}
@@ -477,7 +478,7 @@ export const TiGuy: React.FC = () => {
               style={{ color: '#8B7355' }}
             >
               <span style={{ color: '#B38600' }}>⚜️</span>
-              <span>Propulsé par l&apos;IA québécoise</span>
+              <span>Powered by Quebec AI</span>
               <span style={{ color: '#B38600' }}>🦫</span>
             </p>
           </div>

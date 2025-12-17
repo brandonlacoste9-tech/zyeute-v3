@@ -7,7 +7,6 @@ import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
-import { ChatButton } from '@/components/ChatButton';
 import { GoldButton } from '@/components/GoldButton';
 import { Avatar } from '@/components/Avatar';
 import { Image } from '@/components/Image';
@@ -61,9 +60,14 @@ export const Profile: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        // For `/profile/me`, use getCurrentUser() directly - it's designed for this
+        // Handle Guest Mode for /profile/me
         if (slug === 'me') {
-          profileLogger.debug('[Profile] Fetching current user for /profile/me');
+          // If accessing /me but context says guest, show guest stub user
+          // We can't use useAuth hook inside useEffect easily without refactoring, 
+          // but we can check the localStorage key as a fallback or assume
+          // getCurrentUser returning null MIGHT mean guest if we are protected routed here.
+
+          // Better approach: use the same user-check logic
           const profileUser = await getCurrentUser();
           profileLogger.debug('[Profile] getCurrentUser result:', profileUser ? 'found' : 'null');
 
@@ -72,8 +76,31 @@ export const Profile: React.FC = () => {
             setCurrentUser(profileUser);
             setError(null);
           } else {
-            // Not logged in, redirect to login
-            profileLogger.debug('[Profile] No user found, redirecting to login');
+            // Check for guest mode flag directly as fallback since we are inside logic
+            const isGuest = localStorage.getItem('zyeute_guest_mode') === 'true';
+
+            if (isGuest) {
+              setUser({
+                id: 'guest',
+                username: 'visiteur',
+                display_name: 'Visiteur',
+                avatar_url: null,
+                bio: 'Compte invité. Créez un compte pour profiter de tout! 🚀',
+                coins: 0,
+                fire_score: 0,
+                is_verified: false,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                followers_count: 0,
+                following_count: 0,
+                posts_count: 0,
+                is_following: false
+              } as User);
+              setCurrentUser(null); // No real current user
+              return;
+            }
+
+            // Not logged in and not guest
             navigate('/login');
             return;
           }
@@ -318,8 +345,8 @@ export const Profile: React.FC = () => {
                   tap();
                 }}
                 className={`py-4 font-semibold transition-all relative ${activeTab === 'posts'
-                    ? 'text-gold-400'
-                    : 'text-leather-300 hover:text-gold-200'
+                  ? 'text-gold-400'
+                  : 'text-leather-300 hover:text-gold-200'
                   }`}
               >
                 <span className="relative z-10">Posts</span>
@@ -333,8 +360,8 @@ export const Profile: React.FC = () => {
                   tap();
                 }}
                 className={`py-4 font-semibold transition-all relative ${activeTab === 'fires'
-                    ? 'text-gold-400'
-                    : 'text-leather-300 hover:text-gold-200'
+                  ? 'text-gold-400'
+                  : 'text-leather-300 hover:text-gold-200'
                   }`}
               >
                 <span className="relative z-10">🔥 Fires</span>
@@ -349,8 +376,8 @@ export const Profile: React.FC = () => {
                     tap();
                   }}
                   className={`py-4 font-semibold transition-all relative ${activeTab === 'saved'
-                      ? 'text-gold-400'
-                      : 'text-leather-300 hover:text-gold-200'
+                    ? 'text-gold-400'
+                    : 'text-leather-300 hover:text-gold-200'
                     }`}
                 >
                   <span className="relative z-10">Sauvegardés</span>
@@ -428,8 +455,7 @@ export const Profile: React.FC = () => {
         </p>
       </div>
 
-      {/* Premium Chat Button */}
-      <ChatButton isFixed={true} />
+
     </div>
   );
 };
