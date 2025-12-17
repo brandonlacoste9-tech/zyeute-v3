@@ -131,8 +131,8 @@ export const AIStudio: React.FC = () => {
           <button
             onClick={() => setActiveTab('image')}
             className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${activeTab === 'image'
-                ? 'bg-gold-gradient text-black'
-                : 'text-gold-400 hover:bg-zinc-800'
+              ? 'bg-gold-gradient text-black'
+              : 'text-gold-400 hover:bg-zinc-800'
               }`}
             data-testid="tab-image"
           >
@@ -141,8 +141,8 @@ export const AIStudio: React.FC = () => {
           <button
             onClick={() => setActiveTab('video')}
             className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${activeTab === 'video'
-                ? 'bg-gold-gradient text-black'
-                : 'text-gold-400 hover:bg-zinc-800'
+              ? 'bg-gold-gradient text-black'
+              : 'text-gold-400 hover:bg-zinc-800'
               }`}
             data-testid="tab-video"
           >
@@ -175,8 +175,8 @@ export const AIStudio: React.FC = () => {
                       key={ratio.value}
                       onClick={() => setAspectRatio(ratio.value)}
                       className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${aspectRatio === ratio.value
-                          ? 'bg-gold-500 text-black'
-                          : 'bg-zinc-800 text-gold-300 hover:bg-zinc-700'
+                        ? 'bg-gold-500 text-black'
+                        : 'bg-zinc-800 text-gold-300 hover:bg-zinc-700'
                         }`}
                       data-testid={`button-ratio-${ratio.value}`}
                     >
@@ -410,7 +410,8 @@ export const AIStudio: React.FC = () => {
       </main>
 
       {/* Bottom Navigation */}
-      <BottomNav />
+      {/* Premium Chat Button - Always fixed */}
+      <ChatButton isFixed={true} />
     </div>
   );
 };
