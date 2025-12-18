@@ -33,17 +33,20 @@ function initializeTracing() {
         registerOTel({
           serviceName: "zyeute-v3",
         });
-        
+
         // Register instrumentations for automatic tracing
         registerInstrumentations({
           instrumentations: [
             new HttpInstrumentation({
-              ignoreIncomingPaths: ["/health", "/favicon.ico"],
+              ignoreIncomingRequestHook: (request) => {
+                const url = request.url || '';
+                return url.includes('/health') || url.includes('/favicon.ico');
+              },
             }),
             new ExpressInstrumentation(),
           ],
         });
-        
+
         isTracingEnabled = true;
         console.log("✅ OpenTelemetry tracing enabled");
       } else {
@@ -81,12 +84,12 @@ export async function traced<T>(
   if (!isTracingEnabled) {
     // If tracing is disabled, just execute the function with a mock span
     const mockSpan = {
-      recordException: () => {},
-      setStatus: () => {},
-      setAttributes: () => {},
-      setAttribute: () => {},
-      addEvent: () => {},
-      end: () => {},
+      recordException: () => { },
+      setStatus: () => { },
+      setAttributes: () => { },
+      setAttribute: () => { },
+      addEvent: () => { },
+      end: () => { },
       spanContext: () => ({ traceId: '', spanId: '', traceFlags: 0 }),
     } as any;
     return fn(mockSpan);
@@ -96,9 +99,9 @@ export async function traced<T>(
     try {
       // Add custom attributes
       span.setAttributes(attributes);
-      
+
       const result = await fn(span);
-      
+
       span.setStatus({ code: SpanStatusCode.OK });
       return result;
     } catch (error) {
@@ -193,7 +196,7 @@ export async function traceStripe<T>(
  */
 export function addSpanAttributes(attributes: Record<string, string | number | boolean>) {
   if (!isTracingEnabled) return;
-  
+
   const span = trace.getActiveSpan();
   if (span) {
     span.setAttributes(attributes);
@@ -205,7 +208,7 @@ export function addSpanAttributes(attributes: Record<string, string | number | b
  */
 export function recordException(error: Error, attributes?: Record<string, string | number | boolean>) {
   if (!isTracingEnabled) return;
-  
+
   const span = trace.getActiveSpan();
   if (span) {
     span.recordException(error);
@@ -224,10 +227,10 @@ export function recordException(error: Error, attributes?: Record<string, string
  */
 export function getTraceContext(): { traceId?: string; spanId?: string } {
   if (!isTracingEnabled) return {};
-  
+
   const span = trace.getActiveSpan();
   if (!span) return {};
-  
+
   const spanContext = span.spanContext();
   return {
     traceId: spanContext.traceId,
@@ -241,15 +244,15 @@ export function getTraceContext(): { traceId?: string; spanId?: string } {
 export function tracingMiddleware() {
   return (req: any, res: any, next: any) => {
     const traceContext = getTraceContext();
-    
+
     // Add trace context to request for logging
     req.traceContext = traceContext;
-    
+
     // Add trace headers to response
     if (traceContext.traceId) {
       res.setHeader("X-Trace-Id", traceContext.traceId);
     }
-    
+
     next();
   };
 }

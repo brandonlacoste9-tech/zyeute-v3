@@ -1,5 +1,4 @@
 import express, { type Request, Response, NextFunction } from "express";
-import session from "express-session";
 import { registerRoutes } from "../server/routes.js";
 import { createServer } from "http";
 
@@ -8,24 +7,6 @@ const app = express();
 
 // Trust proxy for Vercel
 app.set("trust proxy", 1);
-
-// Session configuration (using memory store for serverless - consider Redis for production)
-const sessionSecret = process.env.SESSION_SECRET || "dev-secret-change-in-production";
-
-app.use(
-  session({
-    secret: sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      httpOnly: true,
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    },
-    name: "zyeute.sid",
-  })
-);
 
 // Parse JSON with raw body for Stripe webhooks
 declare module "http" {
@@ -53,11 +34,11 @@ app.use((req, res, next) => {
     "Access-Control-Allow-Headers",
     "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
   );
-  
+
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
-  
+
   next();
 });
 
