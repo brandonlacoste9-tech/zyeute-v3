@@ -62,15 +62,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let mounted = true;
         const initStart = Date.now();
 
-        // EMERGENCY FAILSAFE: Force loading to complete after 5s maximum
+        // EMERGENCY FAILSAFE: Force loading to complete after 1s maximum
         const emergencyTimeout = setTimeout(() => {
-            console.warn('⚠️ Auth initialization timeout - forcing completion');
+            console.warn('⚠️ EMERGENCY: Forcing UI render after 1 second');
             trackPerformance('Auth Emergency Timeout', initStart);
             if (mounted) {
-                // Don't force guest mode - just stop loading and let user choose
                 setIsLoading(false);
             }
-        }, 5000);
+        }, 1000);
 
         async function initializeAuth() {
             try {
