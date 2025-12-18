@@ -57,17 +57,15 @@ export const Login: React.FC = () => {
     loginLogger.info('🎭 Guest login initiated');
 
     try {
-      // Set guest mode flags in localStorage
-      localStorage.setItem(GUEST_MODE_KEY, 'true');
-      localStorage.setItem(GUEST_TIMESTAMP_KEY, Date.now().toString());
-      localStorage.setItem(GUEST_VIEWS_KEY, '0');
+      // Use context to set guest mode
+      enterGuestMode();
 
-      if (debugMode) console.log('✅ Guest flags set in localStorage');
+      if (debugMode) console.log('✅ Guest flags set via context');
 
       // Simulate a short delay for UX, then navigate
       setTimeout(() => {
         if (debugMode) console.log('🎭 Redirecting to home...');
-        window.location.href = '/';
+        navigate('/');
       }, 800);
     } catch (err: any) {
       if (debugMode) console.error('❌ [GUEST LOGIN ERROR]', err);
@@ -75,7 +73,7 @@ export const Login: React.FC = () => {
       setError(err.message || 'Erreur de connexion invité');
       setIsLoading(false);
     }
-  }, [debugMode]);
+  }, [debugMode, enterGuestMode, navigate]);
 
   const handleSubmit = React.useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -427,10 +425,7 @@ export const Login: React.FC = () => {
           type="button"
           className="w-full py-4 rounded-xl font-semibold transition-all duration-300 border-2 border-[rgba(244,196,48,0.3)] bg-transparent text-gold-400 hover:bg-[rgba(244,196,48,0.1)] mb-4"
           style={{ color: '#f4c430', borderColor: 'rgba(244,196,48,0.3)' }}
-          onClick={() => {
-            enterGuestMode();
-            navigate('/feed');
-          }}
+          onClick={handleGuestLogin}
           aria-label="Continuer en tant qu'invité"
         >
           Continuer en tant qu'invité
