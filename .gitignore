@@ -27,6 +27,17 @@ server/email-templates.js
 # Test artifacts
 test-results/
 playwright-report/
+attached_assets/
+
+# Artifacts and Logs
+*.vsix
+debug_output.txt
+vitals_*.txt
+inspections.txt
+*.log
+dependency-report.txt
+dependency-analysis-report.txt
 
 # Documentation archive
 .archive/
+docs/archive/
