@@ -92,24 +92,12 @@ export const Feed: React.FC = () => {
   React.useEffect(() => {
     if (location.state?.refreshFeed) {
       refetch(); // Use refetch from React Query instead
-      // Clear the state to prevent infinite refresh
+      //Clear the state to prevent infinite refresh
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, fetchPosts]);
+  }, [location.state, refetch]);
 
-  // Load more on scroll
-  const handleScroll = React.useCallback(() => {
-    if (isLoading || !hasMore) return;
 
-    const scrollHeight = document.documentElement.scrollHeight;
-    const scrollTop = document.documentElement.scrollTop;
-    const clientHeight = document.documentElement.clientHeight;
-
-    if (scrollTop + clientHeight >= scrollHeight - 1000) {
-      setPage(prev => prev + 1);
-      fetchPosts(page + 1);
-    }
-  }, [isLoading, hasMore, page, fetchPosts]);
 
   // Handle fire toggle - memoized to prevent VideoCard re-renders
   const handleFireToggle = React.useCallback(async (postId: string, _currentFire: number) => {
@@ -192,11 +180,8 @@ export const Feed: React.FC = () => {
   // Handle gift sent - update gift count and show overlay
   const handleGiftSent = useCallback((giftType: string) => {
     if (selectedPostId) {
-      setPosts(prev => prev.map(p =>
-        p.id === selectedPostId
-          ? { ...p, gift_count: (p.gift_count || 0) + 1 }
-          : p
-      ));
+      // Note: posts array is read-only from React Query
+      // The count will update on next refetch
     }
 
     // Trigger overlay animation
