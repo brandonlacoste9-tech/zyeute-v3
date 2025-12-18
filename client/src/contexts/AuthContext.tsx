@@ -64,39 +64,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // EMERGENCY FAILSAFE: Force loading to complete after 5s maximum
         const emergencyTimeout = setTimeout(() => {
-            console.warn('⚠️ Auth initialization timeout - forcing guest mode');
+            console.warn('⚠️ Auth initialization timeout - forcing completion');
             trackPerformance('Auth Emergency Timeout', initStart);
             if (mounted) {
-                const validGuest = checkGuestMode();
-                setIsGuest(validGuest);
+                // Don't force guest mode - just stop loading and let user choose
                 setIsLoading(false);
             }
         }, 5000);
 
         async function initializeAuth() {
             try {
-                // 1. Check Supabase Session with Timeout
+                // 1. Check Supabase Session with AGGRESSIVE retry
                 const sessionStart = Date.now();
-                const sessionPromise = supabase.auth.getSession();
-                const timeoutPromise = new Promise<{ data: { session: Session | null } }>((_, reject) =>
-                    setTimeout(() => reject(new Error('Auth check timed out')), 3000)
-                );
 
-                const { data: { session: initialSession } } = await Promise.race([sessionPromise, timeoutPromise]);
+                let session = null;
+                let attempts = 0;
+                const maxAttempts = 2;
+
+                while (attempts < maxAttempts && !session) {
+                    try {
+                        const { data, error } = await Promise.race([
+                            supabase.auth.getSession(),
+                            new Promise<any>((_, reject) =>
+                                setTimeout(() => reject(new Error('Timeout')), 2000)
+                            )
+                        ]);
+
+                        if (error) throw error;
+                        session = data.session;
+                        break;
+                    } catch (err) {
+                        attempts++;
+                        if (attempts < maxAttempts) {
+                            console.log(`Auth attempt ${attempts} failed, retrying...`);
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                    }
+                }
+
                 trackPerformance('Supabase getSession', sessionStart);
 
-                if (initialSession?.user) {
+                if (session?.user) {
                     if (mounted) {
-                        setSession(initialSession);
-                        setUser(initialSession.user);
+                        setSession(session);
+                        setUser(session.user);
                         // Check admin status
                         const adminStart = Date.now();
-                        const adminStatus = await checkIsAdmin(initialSession.user);
+                        const adminStatus = await checkIsAdmin(session.user);
                         trackPerformance('Admin check', adminStart);
                         if (mounted) setIsAdmin(adminStatus);
                     }
                 } else {
-                    // 2. Fallback to Guest Mode
+                    // 2. Fallback to Guest Mode check
                     const guestCheckStart = Date.now();
                     const validGuest = checkGuestMode();
                     trackPerformance('Guest mode check', guestCheckStart);
