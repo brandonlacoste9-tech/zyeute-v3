@@ -27,6 +27,7 @@ import Feed from '@/pages/Feed';
 import Profile from '@/pages/Profile';
 import Explore from '@/pages/Explore';
 import Login from '@/pages/Login';
+import LoginNextGen from '@/pages/LoginNextGen';
 import Signup from '@/pages/Signup';
 import AuthCallback from '@/pages/AuthCallback';
 import ForgotPassword from '@/pages/ForgotPassword';
@@ -160,6 +161,7 @@ function App() {
                               <Routes>
                                 {/* Public Routes */}
                                 <Route path="/login" element={<Login />} />
+                                <Route path="/login/nextgen" element={<LoginNextGen />} />
                                 <Route path="/signup" element={<Signup />} />
                                 <Route path="/forgot-password" element={<ForgotPassword />} />
                                 <Route path="/reset-password" element={<ResetPassword />} />
