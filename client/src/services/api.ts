@@ -36,12 +36,19 @@ async function apiCall<T>(
       credentials: 'include', // Include cookies for session
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      return { data: null, error: data.error || 'Request failed' };
+        let errorMessage = 'Request failed';
+        try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (e) {
+            // Not a JSON response
+            apiLogger.error(`Non-JSON error from ${endpoint}: ${response.status}`);
+        }
+        return { data: null, error: errorMessage };
     }
 
+    const data = await response.json();
     return { data, error: null };
   } catch (error) {
     apiLogger.error(`API call failed: ${endpoint}`, error);

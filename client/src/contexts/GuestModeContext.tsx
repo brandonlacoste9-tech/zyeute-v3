@@ -8,12 +8,15 @@ interface GuestModeContextType {
     exitGuestMode: () => void;
     startGuestSession: () => void;
     endGuestSession: () => void;
+    incrementViews: () => void;
+    viewsCount: number;
+    isExpired: boolean;
+    remainingTime: number;
 }
 
 export const GuestModeContext = createContext<GuestModeContextType | undefined>(undefined);
 
 export function GuestModeProvider({ children }: { children: ReactNode }) {
-    // Initialize from localStorage
     const [isGuest, setIsGuest] = useState(() => {
         if (typeof window !== 'undefined') {
             return localStorage.getItem(GUEST_MODE_KEY) === 'true';
@@ -21,10 +24,51 @@ export function GuestModeProvider({ children }: { children: ReactNode }) {
         return false;
     });
 
+    const [viewsCount, setViewsCount] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const count = localStorage.getItem(GUEST_VIEWS_KEY);
+            return count ? parseInt(count, 10) : 0;
+        }
+        return 0;
+    });
+
+    const [remainingTime, setRemainingTime] = useState(0);
+    const [isExpired, setIsExpired] = useState(false);
+
+    // Update remaining time and expiry status
+    useEffect(() => {
+        const checkExpiry = () => {
+            const timestamp = localStorage.getItem(GUEST_TIMESTAMP_KEY);
+            if (timestamp && isGuest) {
+                const startTime = parseInt(timestamp, 10);
+                const elapsed = Date.now() - startTime;
+                const remaining = Math.max(0, 24 * 60 * 60 * 1000 - elapsed);
+                setRemainingTime(remaining);
+                
+                if (remaining <= 0) {
+                    setIsExpired(true);
+                    // Session expired, but we don't automatically clear to let UI handle it
+                } else {
+                    setIsExpired(false);
+                }
+            } else {
+                setRemainingTime(0);
+                setIsExpired(false);
+            }
+        };
+
+        checkExpiry();
+        const interval = setInterval(checkExpiry, 60000); // Check every minute
+        return () => clearInterval(interval);
+    }, [isGuest]);
+
     // Sync localStorage changes to state
     useEffect(() => {
         const handleStorageChange = () => {
-            setIsGuest(localStorage.getItem(GUEST_MODE_KEY) === 'true');
+            const guestMode = localStorage.getItem(GUEST_MODE_KEY) === 'true';
+            setIsGuest(guestMode);
+            const count = localStorage.getItem(GUEST_VIEWS_KEY);
+            setViewsCount(count ? parseInt(count, 10) : 0);
         };
         window.addEventListener('storage', handleStorageChange);
         return () => window.removeEventListener('storage', handleStorageChange);
@@ -33,25 +77,22 @@ export function GuestModeProvider({ children }: { children: ReactNode }) {
     const enterGuestMode = () => setIsGuest(true);
     const exitGuestMode = () => setIsGuest(false);
 
-    // ✅ Properly starts guest session with localStorage persistence
-    // Handles private browsing mode gracefully
     const startGuestSession = () => {
         console.log('🎭 [GuestModeContext] Starting guest session...');
         try {
             localStorage.setItem(GUEST_MODE_KEY, 'true');
             localStorage.setItem(GUEST_TIMESTAMP_KEY, Date.now().toString());
             localStorage.setItem(GUEST_VIEWS_KEY, '0');
-            console.log('✅ [GuestModeContext] Guest session started, localStorage set');
+            setViewsCount(0);
+            setIsGuest(true);
+            setIsExpired(false);
+            console.log('✅ [GuestModeContext] Guest session started');
         } catch (e) {
-            // localStorage quota exceeded or in private/incognito browsing
-            console.warn('⚠️ [GuestModeContext] Storage failed (private browsing?):', e);
+            console.warn('⚠️ [GuestModeContext] Storage failed:', e);
+            setIsGuest(true);
         }
-        // Always set in-memory state, even if storage fails
-        setIsGuest(true);
     };
 
-    // ✅ Properly ends guest session
-    // Handles private browsing mode gracefully
     const endGuestSession = () => {
         console.log('🎭 [GuestModeContext] Ending guest session...');
         try {
@@ -62,8 +103,19 @@ export function GuestModeProvider({ children }: { children: ReactNode }) {
             console.warn('⚠️ [GuestModeContext] Storage cleanup failed:', e);
         }
         setIsGuest(false);
+        setViewsCount(0);
+        setIsExpired(false);
     };
 
+    const incrementViews = () => {
+        const newCount = viewsCount + 1;
+        setViewsCount(newCount);
+        try {
+            localStorage.setItem(GUEST_VIEWS_KEY, newCount.toString());
+        } catch (e) {
+            console.warn('⚠️ [GuestModeContext] Failed to save guest views:', e);
+        }
+    };
 
     return (
         <GuestModeContext.Provider value={{
@@ -72,7 +124,11 @@ export function GuestModeProvider({ children }: { children: ReactNode }) {
             enterGuestMode,
             exitGuestMode,
             startGuestSession,
-            endGuestSession
+            endGuestSession,
+            incrementViews,
+            viewsCount,
+            isExpired,
+            remainingTime
         }}>
             {children}
         </GuestModeContext.Provider>
@@ -82,20 +138,18 @@ export function GuestModeProvider({ children }: { children: ReactNode }) {
 export function useGuestMode() {
     const context = useContext(GuestModeContext);
     if (context === undefined) {
-        // Return a safe default instead of throwing
+        // Return a safe default instead of throwing to prevent app-wide crashes
         return {
             isGuest: false,
             setIsGuest: () => { },
             enterGuestMode: () => { },
             exitGuestMode: () => { },
-            startGuestSession: () => {
-                // Fallback: Still set localStorage even without context
-                console.warn('🎭 [GuestMode] Using fallback - context not available');
-                localStorage.setItem('zyeute_guest_mode', 'true');
-                localStorage.setItem('zyeute_guest_timestamp', Date.now().toString());
-                localStorage.setItem('zyeute_guest_views', '0');
-            },
+            startGuestSession: () => { },
             endGuestSession: () => { },
+            incrementViews: () => { },
+            viewsCount: 0,
+            isExpired: false,
+            remainingTime: 0
         };
     }
     return context;
