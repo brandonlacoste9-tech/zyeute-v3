@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { logger } from '../lib/logger';
-import { GUEST_MODE_KEY, GUEST_TIP_TIMESTAMP_KEY, GUEST_VIEWS_KEY } from '../lib/constants';
+import { GUEST_MODE_KEY, GUEST_TIMESTAMP_KEY, GUEST_VIEWS_KEY } from '../lib/constants';
 import '../styles/Login.css';
 
 const loginLogger = logger.withContext('Login');
@@ -76,7 +76,7 @@ export const Login: React.FC = () => {
   const handleGuestLogin = () => {
     loginLogger.info('Guest mode activated');
     localStorage.setItem(GUEST_MODE_KEY, 'true');
-    localStorage.setItem(GUEST_TIP_TIMESTAMP_KEY, Date.now().toString());
+    localStorage.setItem(GUEST_TIMESTAMP_KEY, Date.now().toString());
     localStorage.setItem(GUEST_VIEWS_KEY, '0');
     navigate('/feed');
   };
