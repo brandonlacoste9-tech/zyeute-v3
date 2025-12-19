@@ -144,7 +144,7 @@ const Login: React.FC = () => {
             onClick={handleGuestLogin}
             disabled={isLoading}
           >
-            Continuer en tant qu'invité
+            Continuer en tant qu'Invité
           </button>
           
           <button 
@@ -158,7 +158,7 @@ const Login: React.FC = () => {
         </div>
 
         <p className="signup-text">
-          Pas encore icitte?<br />
+          Pas encore icitte?
           <Link to="/register">
             <strong>Embarque!</strong>
           </Link>
@@ -171,11 +171,7 @@ const Login: React.FC = () => {
         onClick={handleBiometric}
         disabled={isLoading}
       >
-        <svg viewBox="0 0 24 24" className="fingerprint-icon">
-          <path d="M12 2a10 10 0 00-10 10c0 2.5 1 4.7 2.6 6.3l1.4-1.4C4.8 15.8 4 13.9 4 12a8 8 0 1116 0c0 1.9-0.8 3.8-2 5l1.4 1.4C21 16.7 22 14.5 22 12a10 10 0 00-10-10z" />
-          <path d="M12 6a6 6 0 00-6 6c0 1.4.5 2.7 1.3 3.7l1.4-1.4C8.3 13.6 8 12.8 8 12a4 4 0 118 0c0 .8-.3 1.6-.7 2.3l1.4 1.4C17.5 14.7 18 13.4 18 12a6 6 0 00-6-6z" />
-          <path d="M12 10a2 2 0 00-2 2c0 .5.2.9.5 1.2l1.4-1.4c-.1-.1-.2-.3-.2-.5a1 1 0 112 0c0 .2-.1.4-.2.5l1.4 1.4c.3-.3.5-.7.5-1.2a2 2 0 00-2-2z" />
-        </svg>
+        <div className="crown-texture" />
       </button>
     </div>
   );

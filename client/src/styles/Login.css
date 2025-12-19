@@ -1,4 +1,7 @@
-/* Enhanced ZyeuteLogin.css - True Luxury Leather Design */
+/**
+ * Zyeuté Login - True Luxury Leather Design
+ * Quebec Fleur-de-lis Heritage Styling
+ */
 
 .login-container {
   min-height: 100vh;
@@ -21,6 +24,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 5;
 }
 
 .sparkle {
@@ -54,33 +58,39 @@
 
 /* 3D Gold Fleur-de-lis */
 .fleur-de-lis {
-  width: 80px;
-  height: 80px;
-  margin-bottom: 20px;
+  width: 100px;
+  height: 100px;
+  margin-bottom: 10px;
   filter: drop-shadow(0 0 15px #ffd700) drop-shadow(0 5px 10px rgba(0,0,0,0.8));
+  z-index: 10;
 }
 
 /* Embossed 3D Title */
 .login-title {
-  font-size: 4.5rem;
+  font-size: 5rem;
   font-weight: 900;
   background: linear-gradient(180deg, #ffd700 0%, #b8860b 45%, #8b6914 55%, #ffd700 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   text-shadow: 
-    2px 2px 4px #000,
-    0 0 30px rgba(255,215,0,0.8);
-  filter: drop-shadow(0 0 20px #ffd700);
+    2px 2px 4px rgba(0,0,0,0.8),
+    0 0 30px rgba(255,215,0,0.4);
+  filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.3));
   margin: 0;
+  z-index: 10;
+  text-transform: none;
 }
 
 .login-subtitle {
-  font-size: 1.1rem;
-  letter-spacing: 3px;
-  margin: 10px 0 40px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 4px;
+  margin: 5px 0 40px;
   opacity: 0.9;
   color: #d4af37;
+  z-index: 10;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
 /* Leather card with gold stitching */
@@ -88,9 +98,8 @@
   background: #0f0a05;
   background-image: 
     url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><filter id="leather"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="5"/><feColorMatrix values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 3 -1"/></filter><rect width="200" height="200" fill="%230f0a05" filter="url(%23leather)" opacity="0.8"/></svg>');
-border: 8px solid transparent;
-  border-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="none" stroke="%23d4af37" stroke-width="2" stroke-dasharray="5,3"/></svg>') 8 round;
-  border-radius: 24px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 32px;
   padding: 50px 35px;
   width: 90%;
   max-width: 420px;
@@ -98,25 +107,26 @@ border: 8px solid transparent;
   box-shadow: 
     inset 0 0 60px rgba(212,175,55,0.15),
     inset 0 0 30px rgba(212,175,55,0.08),
-    0 20px 40px rgba(0,0,0,0.8),
-    0 0 60px rgba(255,215,0,0.3);
+    0 20px 50px rgba(0,0,0,0.9),
+    0 0 80px rgba(255,215,0,0.1);
+  z-index: 10;
 }
 
 /* Gold stitching effect overlay */
 .login-card::before {
   content: '';
   position: absolute;
-  inset: -3px;
-  border: 3px dashed #d4af37;
+  inset: 10px;
+  border: 4px dashed rgba(212, 175, 55, 0.4);
   border-radius: 24px;
   pointer-events: none;
-  opacity: 0.6;
 }
 
 .card-title {
   text-align: center;
-  font-size: 2rem;
-  margin-bottom: 30px;
+  font-size: 2.5rem;
+  margin-bottom: 35px;
+  font-weight: 700;
   background: linear-gradient(#ffd700, #b8860b);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -124,52 +134,79 @@ border: 8px solid transparent;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
+.login-form {
+  display: flex;
+  flex-direction: column;
+}
+
 .input-field {
   width: 100%;
-  padding: 15px;
-  margin-bottom: 15px;
-  background: #1a1208;
-  border: 2px solid #d4af37;
-  border-radius: 8px;
-  color: #d4af37;
+  padding: 18px;
+  margin-bottom: 20px;
+  background: #080502;
+  border: 2px solid #2a1e0e;
+  border-radius: 12px;
+  color: #fff;
   font-size: 1.1rem;
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.8);
+  transition: all 0.3s;
+}
+
+.input-field:focus {
+  border-color: #d4af37;
+  outline: none;
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.8), 0 0 15px rgba(212, 175, 55, 0.2);
 }
 
 .input-field::placeholder {
-  color: rgba(184, 134, 11, 0.5);
+  color: #4a3a2a;
 }
 
 .password-wrapper {
   position: relative;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 }
 
 .forgot-password {
   position: absolute;
-  right: 10px;
+  right: 15px;
   top: 18px;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: #d4af37;
   text-decoration: none;
   cursor: pointer;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.forgot-password:hover {
+  opacity: 1;
+  text-decoration: underline;
 }
 
 /* Shiny gold button */
 .login-button {
   width: 100%;
-  padding: 18px;
+  padding: 20px;
   margin: 20px 0;
-  background: linear-gradient(145deg, #ffd700 0%, #b8860b 50%, #ffd700 100%);
+  background: linear-gradient(180deg, #fff7ad 0%, #ffd700 20%, #b8860b 80%, #ffd700 100%);
   border: none;
-  border-radius: 12px;
+  border-radius: 16px;
   color: #000;
-  font-size: 1.5rem;
-  font-weight: bold;
+  font-size: 1.8rem;
+  font-weight: 900;
   cursor: pointer;
-  box-shadow: 0 8px 20px rgba(255,215,0,0.4), 0 4px 8px rgba(0,0,0,0.5);
+  box-shadow: 
+    0 10px 25px rgba(0,0,0,0.5),
+    0 0 20px rgba(255,215,0,0.2);
   position: relative;
   overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.login-button:active {
+  transform: translateY(2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
 }
 
 .login-button::before {
@@ -179,21 +216,23 @@ border: 8px solid transparent;
   left: -50%;
   width: 200%;
   height: 200%;
-  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.5), transparent);
-  transform: translateX(-100%);
-  animation: shine 4s infinite;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.6), transparent);
+  transform: translateX(-100%) rotate(45deg);
+  animation: shine 5s infinite;
 }
 
 @keyframes shine {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% { transform: translateX(-100%) rotate(45deg); }
+  20%, 100% { transform: translateX(100%) rotate(45deg); }
 }
 
 .or-divider {
   text-align: center;
-  margin: 20px 0;
+  margin: 25px 0;
   position: relative;
-  color: #b8860b;
+  color: #d4af37;
+  font-weight: 700;
+  font-size: 1.1rem;
 }
 
 .or-divider::before {
@@ -203,79 +242,117 @@ border: 8px solid transparent;
   left: 0;
   right: 0;
   height: 1px;
-  background: #d4af37;
+  background: linear-gradient(90deg, transparent, #d4af37, transparent);
+  opacity: 0.3;
 }
 
 .or-divider::after {
   content: 'Ou';
   background: #0f0a05;
-  padding: 0 20px;
+  padding: 0 15px;
   position: relative;
+  z-index: 1;
 }
 
 .social-buttons {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
 }
 
 .guest-button,
 .google-button {
   flex: 1;
-  min-width: 48%;
-  padding: 14px;
-  background: transparent;
-  border: 2px solid #d4af37;
-  border-radius: 8px;
-  color: #d4af37;
+  padding: 16px;
+  background: linear-gradient(180deg, #f0e1a1, #c4a155);
+  border: none;
+  border-radius: 12px;
+  color: #1a1208;
   font-size: 1rem;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.3s;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.2;
 }
 
-.google-button {
-  background: linear-gradient(#ffd700, #b8860b);
-  color: #000;
-  font-weight: bold;
+.guest-button:hover,
+.google-button:hover {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
 }
 
 .signup-text {
   text-align: center;
-  margin-top: 30px;
-  font-size: 1.1rem;
+  margin-top: 35px;
+  font-size: 1.3rem;
   line-height: 1.6;
+  color: #fff;
 }
 
 .signup-text strong {
-  font-size: 1.5rem;
+  display: block;
+  font-size: 2rem;
+  font-weight: 900;
   background: linear-gradient(#ffd700, #b8860b);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  margin-top: 5px;
 }
 
-/* Biometric button */
+/* Biometric button / Watch Crown button at the bottom */
 .biometric-button {
-  position: absolute;
-  bottom: 40px;
-  width: 70px;
-  height: 70px;
-  background: linear-gradient(145deg, #ffd700 0%, #b8860b 100%);
-  border: none;
+  position: fixed;
+  bottom: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle at 50% 30%, #ffd700, #b8860b 60%, #8b6914 100%);
+  border: 4px solid #b8860b;
   border-radius: 50%;
-  box-shadow: 0 0 30px rgba(255,215,0,0.6), 0 4px 8px rgba(0,0,0,0.5);
+  box-shadow: 
+    0 -10px 40px rgba(255,215,0,0.3),
+    inset 0 4px 10px rgba(255,255,255,0.5),
+    0 10px 30px rgba(0,0,0,0.8);
   cursor: pointer;
-  animation: pulse 3s infinite;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  overflow: hidden;
 }
 
-@keyframes pulse {
-  0% { box-shadow: 0 0 30px rgba(255,215,0,0.6); }
-  50% { box-shadow: 0 0 50px rgba(255,215,0,0.9); }
-  100% { box-shadow: 0 0 30px rgba(255,215,0,0.6); }
+.biometric-button:hover {
+  bottom: -40px;
+  box-shadow: 
+    0 -15px 50px rgba(255,215,0,0.4),
+    inset 0 4px 10px rgba(255,255,255,0.6);
 }
 
-.fingerprint-icon {
-  width: 40px;
-  height: 40px;
-  fill: #000;
+.crown-texture {
+  width: 100%;
+  height: 100%;
+  background-image: repeating-conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 5deg,
+    rgba(0,0,0,0.2) 5.1deg,
+    rgba(0,0,0,0.2) 10deg
+  );
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+@media (max-width: 480px) {
+  .login-title { font-size: 4rem; }
+  .login-subtitle { font-size: 1rem; }
+  .login-card { padding: 40px 25px; }
+  .login-button { font-size: 1.5rem; }
 }
