@@ -1,7 +1,7 @@
 
-import { neurosphere, DeepSeekMessage } from '../lib/ai/deepseek';
-import { db } from '../lib/db';
-import { gitHubTool } from '../lib/tools/github';
+import { neurosphere, DeepSeekMessage } from '../lib/ai/deepseek.js';
+import { db } from '../lib/db.js';
+import { gitHubTool } from '../lib/tools/github.js';
 
 interface ColonyTask {
   id: string;
@@ -107,6 +107,18 @@ export class DeepSeekBee {
       .eq('id', taskId);
     
     console.log(`🍯 [${this.beeId}] Task ${taskId} completed successfully.`);
+  }
+
+  private async failTask(taskId: string, error: string) {
+    await db.from('colony_tasks')
+      .update({ 
+        status: 'failed', 
+        result: { error }, 
+        completed_at: new Date() 
+      })
+      .eq('id', taskId);
+    
+    console.error(`❌ [${this.beeId}] Task ${taskId} failed: ${error}`);
   }
 
   // --- Cognitive Processing ---

@@ -1,5 +1,5 @@
 
-import { DeepSeekBee } from './bees/DeepSeekBee';
+import { DeepSeekBee } from './bees/DeepSeekBee.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
