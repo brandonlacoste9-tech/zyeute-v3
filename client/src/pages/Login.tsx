@@ -30,7 +30,7 @@ const FleurDeLis = () => (
   </svg>
 );
 
-export const Login: React.FC = () => {
+const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -180,3 +180,5 @@ export const Login: React.FC = () => {
     </div>
   );
 };
+
+export default Login;
