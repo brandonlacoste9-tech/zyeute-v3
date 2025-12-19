@@ -31,7 +31,7 @@ interface AnalyticsData {
   engagementRate: number;
 }
 
-export const Analytics: React.FC = () => {
+const Analytics: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
