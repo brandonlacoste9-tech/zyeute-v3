@@ -1,168 +1,159 @@
--- NextGen Authentication System
--- Biometric + Magic Link Support
--- Created: Dec 18, 2025
+-- Zyeuté Next-Gen Authentication Schema
+-- Supports: Biometric (WebAuthn), Magic Link, Password, OAuth
 
--- 1. WebAuthn Authenticators (Biometric Storage)
-CREATE TABLE IF NOT EXISTS user_authenticators (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    credential_id TEXT NOT NULL UNIQUE,
-    credential_public_key BYTEA NOT NULL,
-    sign_count BIGINT DEFAULT 0,
-    transports JSONB,
-    device_name TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    last_used_at TIMESTAMPTZ
+-- WebAuthn Credentials Table
+CREATE TABLE IF NOT EXISTS webauthn_credentials (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  credential_id BYTEA NOT NULL UNIQUE,
+  public_key BYTEA NOT NULL,
+  sign_count INTEGER NOT NULL DEFAULT 0,
+  transports TEXT[] DEFAULT ARRAY[]::TEXT[],
+  device_name TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  last_used_at TIMESTAMP WITH TIME ZONE,
+  is_active BOOLEAN DEFAULT TRUE
 );
 
-CREATE INDEX idx_user_authenticators_user_id ON user_authenticators(user_id);
-CREATE INDEX idx_user_authenticators_credential_id ON user_authenticators(credential_id);
+CREATE INDEX idx_webauthn_user_id ON webauthn_credentials(user_id);
+CREATE INDEX idx_webauthn_credential_id ON webauthn_credentials(credential_id);
 
--- 2. Magic Link Tokens (Passwordless Auth)
+-- Magic Link Tokens Table
 CREATE TABLE IF NOT EXISTS magic_link_tokens (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email TEXT NOT NULL,
-    token TEXT NOT NULL UNIQUE,
-    token_hash TEXT NOT NULL UNIQUE,
-    used BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '15 minutes'),
-    used_at TIMESTAMPTZ,
-    ip_address INET,
-    user_agent TEXT
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  used_at TIMESTAMP WITH TIME ZONE,
+  ip_address INET,
+  user_agent TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_magic_link_tokens_email ON magic_link_tokens(email);
-CREATE INDEX idx_magic_link_tokens_token_hash ON magic_link_tokens(token_hash);
-CREATE INDEX idx_magic_link_tokens_expires_at ON magic_link_tokens(expires_at);
+CREATE INDEX idx_magic_link_user_id ON magic_link_tokens(user_id);
+CREATE INDEX idx_magic_link_email ON magic_link_tokens(email);
+CREATE INDEX idx_magic_link_expires_at ON magic_link_tokens(expires_at);
+CREATE INDEX idx_magic_link_token_hash ON magic_link_tokens(token_hash);
 
--- 3. Session Management
-CREATE TABLE IF NOT EXISTS user_sessions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    session_token TEXT NOT NULL UNIQUE,
-    auth_method TEXT NOT NULL, -- 'biometric', 'magic_link', 'oauth', 'password'
-    ip_address INET,
-    user_agent TEXT,
-    device_name TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days'),
-    last_activity_at TIMESTAMPTZ DEFAULT NOW(),
-    revoked BOOLEAN DEFAULT FALSE,
-    revoked_at TIMESTAMPTZ
+-- Session Management Table
+CREATE TABLE IF NOT EXISTS sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  session_token TEXT NOT NULL UNIQUE,
+  auth_method TEXT NOT NULL CHECK (auth_method IN ('biometric', 'magic-link', 'password', 'oauth', 'guest')),
+  device_fingerprint TEXT,
+  ip_address INET,
+  user_agent TEXT,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  last_activity_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_user_sessions_user_id ON user_sessions(user_id);
-CREATE INDEX idx_user_sessions_session_token ON user_sessions(session_token);
-CREATE INDEX idx_user_sessions_expires_at ON user_sessions(expires_at);
+CREATE INDEX idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX idx_sessions_token ON sessions(session_token);
+CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
 
--- 4. Authentication Events Log (Audit Trail)
-CREATE TABLE IF NOT EXISTS auth_events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-    email TEXT,
-    event_type TEXT NOT NULL, -- 'login', 'logout', 'register', 'biometric_add', 'magic_link_sent'
-    auth_method TEXT,
-    status TEXT NOT NULL, -- 'success', 'failed', 'attempted'
-    error_message TEXT,
-    ip_address INET,
-    user_agent TEXT,
-    device_info JSONB,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+-- Audit Log Table
+CREATE TABLE IF NOT EXISTS auth_audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  event_type TEXT NOT NULL CHECK (event_type IN ('login', 'logout', 'register', 'password_change', 'biometric_register', 'biometric_login', 'magic_link_sent', 'magic_link_used', 'oauth_login')),
+  status TEXT NOT NULL CHECK (status IN ('success', 'failed', 'pending')),
+  ip_address INET,
+  user_agent TEXT,
+  error_message TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_auth_events_user_id ON auth_events(user_id);
-CREATE INDEX idx_auth_events_email ON auth_events(email);
-CREATE INDEX idx_auth_events_created_at ON auth_events(created_at);
-CREATE INDEX idx_auth_events_event_type ON auth_events(event_type);
+CREATE INDEX idx_audit_user_id ON auth_audit_log(user_id);
+CREATE INDEX idx_audit_event_type ON auth_audit_log(event_type);
+CREATE INDEX idx_audit_created_at ON auth_audit_log(created_at);
 
--- 5. Enable Row Level Security (RLS)
-ALTER TABLE user_authenticators ENABLE ROW LEVEL SECURITY;
+-- Enable Row-Level Security (RLS)
+ALTER TABLE webauthn_credentials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE magic_link_tokens ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE auth_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE auth_audit_log ENABLE ROW LEVEL SECURITY;
 
--- 6. RLS Policies for user_authenticators
-CREATE POLICY "Users can view their own authenticators"
-    ON user_authenticators FOR SELECT
-    USING (auth.uid() = user_id);
+-- RLS Policies: Users can only see their own credentials
+CREATE POLICY "Users can view their own credentials" ON webauthn_credentials
+  FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert their own authenticators"
-    ON user_authenticators FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can manage their own credentials" ON webauthn_credentials
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can delete their own authenticators"
-    ON user_authenticators FOR DELETE
-    USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own credentials" ON webauthn_credentials
+  FOR DELETE USING (auth.uid() = user_id);
 
--- 7. RLS Policies for user_sessions
-CREATE POLICY "Users can view their own sessions"
-    ON user_sessions FOR SELECT
-    USING (auth.uid() = user_id);
+-- Magic link tokens (service role access only)
+CREATE POLICY "Service can create magic links" ON magic_link_tokens
+  FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Users can revoke their own sessions"
-    ON user_sessions FOR UPDATE
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+-- Sessions (service role access)
+CREATE POLICY "Users can view their own sessions" ON sessions
+  FOR SELECT USING (auth.uid() = user_id);
 
--- 8. RLS Policies for auth_events (audit log - read-only for users)
-CREATE POLICY "Users can view their own auth events"
-    ON auth_events FOR SELECT
-    USING (auth.uid() = user_id);
+CREATE POLICY "Service can manage sessions" ON sessions
+  FOR INSERT WITH CHECK (true);
 
--- 9. Functions for cleanup
-CREATE OR REPLACE FUNCTION cleanup_expired_magic_links()
+CREATE POLICY "Service can update sessions" ON sessions
+  FOR UPDATE USING (true);
+
+-- Audit logs (admin only)
+CREATE POLICY "Admins can view audit logs" ON auth_audit_log
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.user_id = auth.uid()
+      AND profiles.is_admin = true
+    )
+  );
+
+CREATE POLICY "Service can log auth events" ON auth_audit_log
+  FOR INSERT WITH CHECK (true);
+
+-- Function to clean up expired tokens
+CREATE OR REPLACE FUNCTION cleanup_expired_tokens()
 RETURNS void AS $$
 BEGIN
-    DELETE FROM magic_link_tokens
-    WHERE expires_at < NOW() AND used = FALSE;
+  DELETE FROM magic_link_tokens WHERE expires_at < NOW();
+  DELETE FROM sessions WHERE expires_at < NOW();
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION cleanup_expired_sessions()
-RETURNS void AS $$
-BEGIN
-    DELETE FROM user_sessions
-    WHERE expires_at < NOW() AND revoked = FALSE;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- 10. Function to log auth events
+-- Function to log auth events
 CREATE OR REPLACE FUNCTION log_auth_event(
-    p_user_id UUID,
-    p_email TEXT,
-    p_event_type TEXT,
-    p_auth_method TEXT,
-    p_status TEXT,
-    p_error_message TEXT DEFAULT NULL,
-    p_ip_address INET DEFAULT NULL,
-    p_user_agent TEXT DEFAULT NULL,
-    p_device_info JSONB DEFAULT NULL
+  p_user_id UUID,
+  p_event_type TEXT,
+  p_status TEXT,
+  p_ip_address INET DEFAULT NULL,
+  p_user_agent TEXT DEFAULT NULL,
+  p_error_message TEXT DEFAULT NULL
 )
-RETURNS UUID AS $$
-DECLARE
-    v_event_id UUID;
+RETURNS void AS $$
 BEGIN
-    INSERT INTO auth_events (
-        user_id, email, event_type, auth_method, status,
-        error_message, ip_address, user_agent, device_info
-    ) VALUES (
-        p_user_id, p_email, p_event_type, p_auth_method, p_status,
-        p_error_message, p_ip_address, p_user_agent, p_device_info
-    ) RETURNING id INTO v_event_id;
-    
-    RETURN v_event_id;
+  INSERT INTO auth_audit_log (user_id, event_type, status, ip_address, user_agent, error_message)
+  VALUES (p_user_id, p_event_type, p_status, p_ip_address, p_user_agent, p_error_message);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
--- 11. Cron job to clean up expired tokens (run every hour)
--- Note: Requires pg_cron extension
--- SELECT cron.schedule('cleanup-magic-links', '0 * * * *', 'SELECT cleanup_expired_magic_links()');
--- SELECT cron.schedule('cleanup-sessions', '0 * * * *', 'SELECT cleanup_expired_sessions()');
+-- Trigger to update last_activity_at in sessions
+CREATE OR REPLACE FUNCTION update_session_activity()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.last_activity_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- 12. Comments for documentation
-COMMENT ON TABLE user_authenticators IS 'Stores WebAuthn (biometric) credentials for passwordless authentication';
-COMMENT ON TABLE magic_link_tokens IS 'Stores one-time magic link tokens for email-based passwordless authentication';
-COMMENT ON TABLE user_sessions IS 'Manages active user sessions with auth method tracking';
-COMMENT ON TABLE auth_events IS 'Audit log for all authentication events';
+CREATE TRIGGER trigger_update_session_activity
+  BEFORE UPDATE ON sessions
+  FOR EACH ROW
+  EXECUTE FUNCTION update_session_activity();
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON webauthn_credentials TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON sessions TO authenticated;
+GRANT SELECT ON auth_audit_log TO authenticated;
+GRANT EXECUTE ON FUNCTION log_auth_event TO authenticated;
+GRANT EXECUTE ON FUNCTION cleanup_expired_tokens TO authenticated;
