@@ -18,6 +18,8 @@ interface AuthContextType {
     isLoading: boolean;
     logout: () => Promise<void>;
     enterGuestMode: () => void;
+      signIn: (email: string, password: string) => Promise<void>;
+        signInWithGoogle: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -166,6 +168,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
     }, []);
 
+      // Sign in with email and password
+        const signIn = async (email: string, password: string) => {
+                setIsLoading(true);
+                    const { error } = await supabase.auth.signInWithPassword({ email, password });
+                        if (error) throw error;
+                            setIsLoading(false);
+                              };
+
+                                // Sign in with Google OAuth
+                                  const signInWithGoogle = async () => {
+                                        const { error } = await supabase.auth.signInWithOAuth({
+                                                  provider: 'google',
+                                                        options: {
+                                                                    redirectTo: `${window.location.origin}/feed`
+                                                                          }
+                                                                              });
+                                                                                  if (error) throw error;
+                                                                                    };
+
     const logout = async () => {
         setIsLoading(true);
         await supabase.auth.signOut();
@@ -191,7 +212,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isGuest,
         isLoading,
         logout,
-        enterGuestMode
+        enterGuestMode,
+            signIn,
+                signInWithGoogle
     };
 
     return (
