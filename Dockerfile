@@ -1,7 +1,7 @@
-# Multi-stage Dockerfile for Next.js
+# Multi-stage Dockerfile for Vite + Express app
 FROM node:20-alpine AS base
 
-# Install dependencies only when needed
+# Install dependencies stage
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
@@ -10,38 +10,36 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 
-# Rebuild the source code only when needed
+# Build stage
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build Next.js
+# Build the application
 RUN npm run build
 
-# Production image, copy all the files and run next
+# Production stage
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
-# Create a non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Create user for running the app
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 express
 
-# Copy necessary files
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Copy built files from builder
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server ./server
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
 
 # Set ownership
-RUN chown -R nextjs:nodejs /app
+RUN chown -R express:nodejs /app
 
-USER nextjs
+USER express
 
-EXPOSE 3000
+EXPOSE 5000
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
-
-CMD ["node", "server.js"]
+CMD ["node", "dist/index.cjs"]
