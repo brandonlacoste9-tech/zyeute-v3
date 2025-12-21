@@ -168,7 +168,13 @@ guardian-bee:
     - npm install -g opencode-ai
   script:
     - echo "🐝 Guardian Bee performing security audit..."
-    - opencode run "Perform security audit: 1) Search for recent CVEs in dependencies 2) Check for known vulnerabilities 3) Identify security anti-patterns 4) Verify authentication mechanisms. Provide citations." --agent guardian-bee 2>&1 | tee security-audit.txt
+        - |
+      opencode run "Perform security audit:
+      1) Search for recent CVEs in dependencies
+      2) Check for known vulnerabilities
+      3) Identify security anti-patterns
+      4) Verify authentication mechanisms.
+      Provide citations." --agent guardian-bee 2>&1 | tee security-audit.txt
   artifacts:
     paths:
       - security-audit.txt
