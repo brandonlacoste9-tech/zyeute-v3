@@ -118,7 +118,8 @@ opencode:
     - echo "🐝 Waking up the Researcher Bee..."
     - opencode run "Analyze this code change and provide feedback" --agent "$OPENCODE_AGENT"
 
-    # 🐝 Researcher Bee - Deep Analysis with Web Search
+    
+# 🐝 Researcher Bee - Deep Analysis with Web Search
 researcher-bee:
   stage: research
   image: node:20
@@ -139,11 +140,10 @@ researcher-bee:
     - |
       if [ -n "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" ]; then
         DIFF_FILES=$(git diff --name-only origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME...HEAD || echo "Unable to get diff")
-        ANALYSIS_PROMPT="Analyze this merge request. Files changed: $DIFF_FILES. Provide detailed feedback on: 1) Code quality 2) Colony OS architectural coherence 3) Integration impact 4) Best practices from web research"
+        opencode run "Analyze this merge request. Files changed: $DIFF_FILES. Provide detailed feedback on: 1) Code quality 2) Colony OS architectural coherence 3) Integration impact 4) Best practices from web research" --agent researcher-bee 2>&1 | tee researcher-output.txt
       else
-        ANALYSIS_PROMPT="Analyze this commit with web research for best practices and improvements"
+        opencode run "Analyze this commit with web research for best practices and improvements" --agent researcher-bee 2>&1 | tee researcher-output.txt
       fi
-    - opencode run "$ANALYSIS_PROMPT" --agent researcher-bee 2>&1 | tee researcher-output.txt
   artifacts:
     paths:
       - researcher-output.txt
@@ -151,7 +151,7 @@ researcher-bee:
     when: always
   allow_failure: true
 
-  # 🐝 Guardian Bee - Security Audit with CVE Search
+# 🐝 Guardian Bee - Security Audit with CVE Search
 guardian-bee:
   stage: research
   image: node:20
@@ -168,13 +168,7 @@ guardian-bee:
     - npm install -g opencode-ai
   script:
     - echo "🐝 Guardian Bee performing security audit..."
-        - |
-      opencode run "Perform security audit:
-      1) Search for recent CVEs in dependencies
-      2) Check for known vulnerabilities
-      3) Identify security anti-patterns
-      4) Verify authentication mechanisms.
-      Provide citations." --agent guardian-bee 2>&1 | tee security-audit.txt
+    - opencode run "Perform security audit: 1) Search for recent CVEs in dependencies 2) Check for known vulnerabilities 3) Identify security anti-patterns 4) Verify authentication mechanisms. Provide citations." --agent guardian-bee 2>&1 | tee security-audit.txt
   artifacts:
     paths:
       - security-audit.txt
@@ -182,7 +176,7 @@ guardian-bee:
     when: always
   allow_failure: true
 
-  # 🐝 Architect Bee - Design Review
+# 🐝 Architect Bee - Design Review
 architect-bee:
   stage: research
   image: node:20
