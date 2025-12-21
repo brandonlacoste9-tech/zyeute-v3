@@ -95,3 +95,28 @@ deploy_production:
   only:
     - main
   when: manual
+
+# OpenCode AI Code Review
+opencode:
+  stage: .pre
+  image: node:20
+  script:
+    - npm install -g @opencode/cli
+    - opencode run
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  allow_failure: true
+  when: manual
+
+# OpenCode AI Code Review
+opencode:
+  stage: .pre
+  image: node:20
+  script:
+    - npm install -g @opencode/cli
+    - opencode run
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  allow_failure: true
