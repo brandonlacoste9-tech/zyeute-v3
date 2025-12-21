@@ -96,30 +96,23 @@ deploy_production:
     - main
   when: manual
 
-# OpenCode AI Code Review
+# OpenCode AI Code Review - Researcher Bee (Server-Side Swarm)
 opencode:
-  stage: .pre
+  stage: test
   image: node:20
-    rules:
-    - when: manual
-
+  rules:
+    # Rule 1: Allow manual run on Merge Requests (doesn't auto-run to save money)
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+      allow_failure: true
+    # Rule 2: The Magic Trigger - Runs automatically when you comment "@opencode"
+    - if: $CI_COMMIT_MESSAGE =~ /@opencode/
+  variables:
+    # Connects the Brain (Perplexity) and the Platform (GitLab)
+    PERPLEXITY_API_KEY: $PERPLEXITY_API_KEY
+    GITLAB_TOKEN: $GITLAB_TOKEN
+    OPENCODE_AGENT: "qa-bee" # Default agent
   script:
     - npm install -g opencode-ai
-    - opencode run
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  allow_failure: true
-  when: manual
-
-# OpenCode AI Code Review
-opencode:
-  stage: .pre
-  image: node:20
-  script:
-    - npm install -g opencode-ai
-    - opencode run
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  allow_failure: true
+    - echo "🐝 Waking up the Researcher Bee..."
+    - opencode run --agent "$OPENCODE_AGENT" --context "This is a Merge Request review."
