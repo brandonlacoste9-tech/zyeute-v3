@@ -168,7 +168,8 @@ guardian-bee:
     - npm install -g opencode-ai
   script:
     - echo "🐝 Guardian Bee performing security audit..."
-    - opencode run "Perform security audit: 1) Search for recent CVEs in dependencies 2) Check for known vulnerabilities 3) Identify security anti-patterns 4) Verify authentication mechanisms. Provide citations." --agent guardian-bee 2>&1 | tee security-audit.txt
+        - |
+              opencode run "Perform security audit: 1) Search for recent CVEs in dependencies 2) Check for known vulnerabilities 3) Identify security anti-patterns 4) Verify authentication mechanisms. Provide citations." --agent guardian-bee 2>&1 | tee security-audit.txt
   artifacts:
     paths:
       - security-audit.txt
@@ -193,7 +194,8 @@ architect-bee:
     - npm install -g opencode-ai
   script:
     - echo "🐝 Architect Bee reviewing design..."
-    - opencode run "Review architectural design: 1) Organ separation (Mind/Body/Memory/Heart) 2) Caste responsibilities 3) Biological metaphor consistency 4) Search for modern patterns that could improve design. Provide recommendations with citations." --agent architect-bee 2>&1 | tee architecture-review.txt
+        - |
+              opencode run "Review architectural design: 1) Organ separation (Mind/Body/Memory/Heart) 2) Caste responsibilities 3) Biological metaphor consistency 4) Search for modern patterns that could improve design. Provide recommendations with citations." --agent architect-bee 2>&1 | tee architecture-review.txt
   artifacts:
     paths:
       - architecture-review.txt
