@@ -8,6 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useNotifications } from '../contexts/NotificationContext';
 import { Logo } from './Logo';
+import { ColonyStatus } from './providers/colony-provider';
 
 export interface HeaderProps {
   showSearch?: boolean;
@@ -73,6 +74,9 @@ export const Header: React.FC<HeaderProps> = ({
           {title && (
             <h1 className="text-xl font-bold text-gold-400 embossed tracking-wide">{title}</h1>
           )}
+          
+          {/* Colony OS Status */}
+          <ColonyStatus />
         </div>
 
         {/* Right: Actions */}

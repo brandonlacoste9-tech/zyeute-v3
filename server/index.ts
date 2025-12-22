@@ -119,7 +119,7 @@ app.use((req, res, next) => {
   httpServer.listen(
     {
       port,
-      host: "127.0.0.1", // Use localhost for Windows compatibility
+      host: "0.0.0.0", // Allow external access for browser viewing
       // reusePort: true, // Linux-only, disabled for Windows
     },
     () => {

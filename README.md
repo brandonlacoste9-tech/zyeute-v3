@@ -73,7 +73,7 @@
 
 ## 📱 Overview
 
-Zyeuté/KryptoTrac is a comprehensive social media and crypto tracking application built for the Quebec French-speaking market. It features real-time interactions, portfolio and transaction management, advanced price alerts, Stripe payment integration, and a modern, responsive UI built with React and TypeScript.
+Zyeuté/KryptoTrac is a comprehensive social media and cryptocurrency tracking application built specifically for Quebec's French-speaking market. It features real-time interactions, portfolio and transaction management, advanced price alerts, Stripe payment integration, and a modern, responsive UI built with React and TypeScript.
 
 **Live Demo:** [https://package-installer--northern-ventur.replit.app](https://package-installer--northern-ventur.replit.app)
 
@@ -89,7 +89,7 @@ Zyeuté/KryptoTrac is a comprehensive social media and crypto tracking applicati
 - 🎨 **Premium UI** - Beautiful gradient designs and animations
 - 📱 **Responsive Design** - Works seamlessly on all devices
 - 🇫🇷 **French Interface** - Built for Quebec's Francophone community
-- 📊 **Portfolio Tracking** - Track crypto holdings, performance, and analytics
+- 📊 **Portfolio Tracking** - Track cryptocurrency holdings, performance, and analytics
 - 🧾 **Transaction History** - Log, import, and export all trades and transfers
 - 🚨 **Price Alerts** - Multi-channel notifications (email, in-app, push)
 - 🛡️ **Sentry Monitoring** - Real-time error and performance monitoring
@@ -129,7 +129,7 @@ Zyeuté/KryptoTrac is a comprehensive social media and crypto tracking applicati
 
 ## 📂 Project Structure
 
-```
+```text
 Package-Installer/
 ├── client/                  # Frontend React application
 │   ├── src/
@@ -177,7 +177,7 @@ npm install
 3. **Set up environment variables**
 
 Create a `.env` file in the root directory:
-```env
+```bash
 PORT=3000
 STRIPE_SECRET_KEY=your_stripe_secret_key
 STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
@@ -451,9 +451,9 @@ Email notifications powered by Resend:
 
 The app is highly customizable:
 
-- **Themes:** Modify CSS variables in `client/src/index.css`
+- **Themes:** Modify CSS variables in [`client/src/index.css`](./client/src/index.css)
 - **Colors:** Update gradient schemes
-- **Components:** Extend or modify in `client/src/components`
+- **Components:** Extend or modify in [`client/src/components`](./client/src/components)
 - **Features:** Add new functionality in modular structure
 
 ## 🚦 Environment Configuration
@@ -506,13 +506,22 @@ View the [Project Board](../../projects) to see what we're working on.
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+We'd love your contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to get started.
 
 **Quick start**:
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'feat: Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+2. Create a feature branch
+   ```bash
+   git checkout -b feature/AmazingFeature
+   ```
+3. Commit your changes
+   ```bash
+   git commit -m 'feat: Add some AmazingFeature'
+   ```
+4. Push to the branch
+   ```bash
+   git push origin feature/AmazingFeature
+   ```
 5. Open a Pull Request
 
 For more details, see [CONTRIBUTING.md](CONTRIBUTING.md).

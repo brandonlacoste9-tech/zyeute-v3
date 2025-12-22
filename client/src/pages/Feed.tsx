@@ -12,6 +12,7 @@ import { GiftOverlay } from '@/components/features/GiftOverlay';
 import { Onboarding, useOnboarding } from '@/components/Onboarding';
 import { getCurrentUser, getStories } from '@/services/api';
 import { ContinuousFeed } from '@/components/features/ContinuousFeed';
+import KryptoTracIntegration from '@/components/features/KryptoTracIntegration';
 import type { User, Story } from '@/types';
 import { logger } from '../lib/logger';
 import { useGuestMode } from '@/hooks/useGuestMode';
@@ -161,6 +162,11 @@ export const Feed: React.FC = () => {
 
       {/* Main Content - Continuous Video Feed */}
       <div className="flex-1 w-full bg-black relative">
+        {/* KryptoTrac Integration */}
+        <div className="max-w-2xl mx-auto px-4">
+          <KryptoTracIntegration />
+        </div>
+        
         <ContinuousFeed />
       </div>
 
