@@ -1,45 +1,36 @@
-# Multi-stage Dockerfile for Vite + Express app
-FROM node:20-alpine AS base
+# ===== STAGE 1: Build =====
+FROM node:20-alpine AS builder
 
-# Install dependencies stage
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* ./
-RUN npm install --omit=optional
+COPY package*.json ./
 
-# Build stage
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci
+
+# Copy source
 COPY . .
 
-# Build the application
+# Build: Vite frontend + esbuild server bundle
 RUN npm run build
 
-# Production stage
-FROM base AS runner
+# ===== STAGE 2: Production =====
+FROM node:20-alpine AS production
+
 WORKDIR /app
 
-ENV NODE_ENV=production
+# Copy package files
+COPY package*.json ./
 
-# Create user for running the app
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 express
+# Install ONLY production dependencies
+RUN npm ci --omit=dev
 
-# Copy built files from builder
+# Copy built artifacts from builder
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server ./server
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
 
-# Set ownership
-RUN chown -R express:nodejs /app
+# Expose port
+EXPOSE 3000
 
-USER express
-
-EXPOSE 5000
-
+# Run the bundled server (Node.js, not tsx)
 CMD ["node", "dist/index.cjs"]
