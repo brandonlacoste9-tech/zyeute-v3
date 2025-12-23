@@ -1,7 +1,7 @@
 {
   "name": "zyeute-monorepo",
   "private": true,
-    "packageManager": "npm@10.8.2",
+  "packageManager": "npm@10.8.2",
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
@@ -18,9 +18,5 @@
   "dependencies": {
     "bullmq": "^5.0.0",
     "ioredis": "^5.3.2"
-  },
-  "workspaces": [
-    "client",
-    "server"
-  ]
+  }
 }
