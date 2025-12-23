@@ -6,6 +6,7 @@ import { registerRoutes } from "./routes.js";
 import { serveStatic } from "./static.js";
 import { createServer } from "http";
 // import { tracingMiddleware, getTraceContext, recordException } from "./tracer.js";
+import tiGuyRouter from './routes/tiguy.js';
 
 const app = express();
 
@@ -86,6 +87,7 @@ app.use((req, res, next) => {
 
 (async () => {
   await registerRoutes(httpServer, app);
+  app.use('/api/tiguy', tiGuyRouter);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
