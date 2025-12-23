@@ -4,7 +4,6 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-97.6%25-blue)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Replit](https://img.shields.io/badge/Deployed%20on-Replit-orange)](https://replit.com/@northern-ventur/Package-Installer)
 
 ---
 
@@ -75,7 +74,6 @@
 
 Zyeuté/KryptoTrac is a comprehensive social media and cryptocurrency tracking application built specifically for Quebec's French-speaking market. It features real-time interactions, portfolio and transaction management, advanced price alerts, Stripe payment integration, and a modern, responsive UI built with React and TypeScript.
 
-**Live Demo:** [https://package-installer--northern-ventur.replit.app](https://package-installer--northern-ventur.replit.app)
 
 ## ✨ Features
 
@@ -122,7 +120,7 @@ Zyeuté/KryptoTrac is a comprehensive social media and cryptocurrency tracking a
 - **Database:** Production-ready connection (Supabase/PostgreSQL)
 
 ### DevOps
-- **Deployment:** Replit
+- **Deployment:** Fly.io
 - **Version Control:** Git/GitHub
 - **Package Manager:** npm
 - **TypeScript:** Full type safety
@@ -150,7 +148,6 @@ Package-Installer/
 │   └── types.ts            # TypeScript interfaces
 ├── attached_assets/         # Media and static files
 ├── script/                  # Build and deployment scripts
-└── .replit                  # Replit configuration
 ```
 
 ## 🚀 Getting Started
@@ -194,11 +191,6 @@ npm run dev
 5. **Open your browser**
 Navigate to `http://localhost:3000`
 
-### Running on Replit
-
-1. Fork or import this repository to Replit
-2. Set up your environment variables in Replit Secrets
-3. Click the "Run" button
 4. The app will automatically install dependencies and start
 
 ## 🧪 Testing & Evaluation
