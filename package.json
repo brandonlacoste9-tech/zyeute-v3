@@ -7,11 +7,16 @@
     "test": "turbo run test",
     "check": "turbo run check",
     "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "worker:video": "tsx server/workers/videoProcessor.ts"
   },
   "devDependencies": {
     "turbo": "latest",
     "prettier": "^3.0.0"
+  },
+  "dependencies": {
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.3.2"
   },
   "workspaces": [
     "client",
