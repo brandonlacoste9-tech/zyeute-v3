@@ -7,9 +7,13 @@ import { registerRoutes } from "./routes.js";
 import { serveStatic } from "./static.js";
 import tiGuyRouter from './routes/tiguy.js';
 import { createServer } from "http";
+import helmet from "helmet";
 // import { tracingMiddleware, getTraceContext, recordException } from "./tracer.js";
 
 const app = express();
+
+// Use Helmet for security headers
+app.use(helmet());
 
 // Trust proxy for proper IP detection behind reverse proxy
 app.set("trust proxy", 1);

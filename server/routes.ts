@@ -115,7 +115,9 @@ export async function registerRoutes(
   });
 
   // [NEW] Debug and Scalability Diagnostics
-  app.use("/api/debug", debugRoutes);
+  if (process.env.NODE_ENV !== "production") {
+    app.use("/api/debug", debugRoutes);
+  }
 
   // Apply general rate limiting to all other API routes
   app.use("/api", generalRateLimiter);
