@@ -11,20 +11,6 @@ export default defineConfig({
     react(),
     tailwindcss(),
     metaImagesPlugin(),
-    // Only include Replit plugins when running on Replit
-    ...(process.env.NODE_ENV !== "production" && isReplit
-      ? [
-        await import("@replit/vite-plugin-runtime-error-modal").then((m) =>
-          m.default(),
-        ),
-        await import("@replit/vite-plugin-cartographer").then((m) =>
-          m.cartographer(),
-        ),
-        await import("@replit/vite-plugin-dev-banner").then((m) =>
-          m.devBanner(),
-        ),
-      ]
-      : []),
   ],
   resolve: {
     alias: {
