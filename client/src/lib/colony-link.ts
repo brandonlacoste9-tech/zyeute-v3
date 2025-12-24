@@ -141,9 +141,7 @@ class ColonyLink {
   }
 
   // Cross-Organ Synergies
-  public subscribeToKryptoAlerts(callback: (alert: any) => void) {
-    this.socket?.on('crypto_alert', callback);
-  }
+
 
   public subscribeToVraieQuebecEvents(callback: (event: any) => void) {
     this.socket?.on('vraie_quebec_event', callback);
