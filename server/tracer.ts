@@ -10,7 +10,7 @@
  */
 
 import { trace, context, SpanStatusCode, Span } from "@opentelemetry/api";
-import { registerInstrumentations } from "@opentelemetry/instrumentation";
+// import { registerInstrumentations } from "@opentelemetry/instrumentation";
 import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import { ExpressInstrumentation } from "@opentelemetry/instrumentation-express";
 
@@ -35,17 +35,17 @@ function initializeTracing() {
         });
 
         // Register instrumentations for automatic tracing
-        registerInstrumentations({
-          instrumentations: [
-            new HttpInstrumentation({
-              ignoreIncomingRequestHook: (request) => {
-                const url = request.url || '';
-                return url.includes('/health') || url.includes('/favicon.ico');
-              },
-            }),
-            new ExpressInstrumentation(),
-          ],
-        });
+        // registerInstrumentations({
+        //   instrumentations: [
+        //     new HttpInstrumentation({
+        //       ignoreIncomingRequestHook: (request) => {
+        //         const url = request.url || '';
+        //         return url.includes('/health') || url.includes('/favicon.ico');
+        //       },
+        //     }),
+        //     new ExpressInstrumentation(),
+        //   ],
+        // });
 
         isTracingEnabled = true;
         console.log("✅ OpenTelemetry tracing enabled");
