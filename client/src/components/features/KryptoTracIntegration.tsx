@@ -178,7 +178,7 @@ const KryptoTracIntegration: React.FC = () => {
         </button>
       </div>
 
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .crypto-integration {
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           border-radius: 16px;
@@ -394,7 +394,7 @@ const KryptoTracIntegration: React.FC = () => {
             text-align: center;
           }
         }
-      `}</style>
+      ` }} />
     </div>
   );
 };

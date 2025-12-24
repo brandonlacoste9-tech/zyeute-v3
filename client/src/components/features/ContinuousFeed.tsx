@@ -1,9 +1,12 @@
 /**
  * ContinuousFeed - Full-screen vertical video feed
  * Adapts the Player experience for the main feed
+ * NOW WITH VIRTUALIZATION by REACT-WINDOW
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { List, ListImperativeAPI } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
 import { SingleVideoView } from './SingleVideoView';
 import { getExplorePosts, togglePostFire, getCurrentUser } from '@/services/api';
 import { useHaptics } from '@/hooks/useHaptics';
@@ -18,8 +21,54 @@ interface ContinuousFeedProps {
     onVideoChange?: (index: number, post: Post) => void;
 }
 
+const FeedRow = memo(({ index, style, posts, currentIndex, handleFireToggle, handleComment, handleShare }: any) => {
+    const post = posts[index];
+    const isActive = index === currentIndex;
+
+    // Use a ref to ensure we only try to play properly mounted videos
+    const rowRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!rowRef.current) return;
+        
+        // Manual autoplay logic handled by the parent effect or simpler direct control here
+        const videoElement = rowRef.current.querySelector('video');
+        if (videoElement) {
+            if (isActive) {
+                videoElement.play().catch(() => {});
+            } else {
+                videoElement.pause();
+                videoElement.currentTime = 0; // Reset for better performance
+            }
+        }
+    }, [isActive]);
+
+    return (
+        <div style={style} ref={rowRef} data-video-index={index} className="w-full h-full">
+            <SingleVideoView
+                post={post}
+                user={post.user}
+                isActive={isActive}
+                onFireToggle={handleFireToggle}
+                onComment={handleComment}
+                onShare={handleShare}
+            />
+        </div>
+    );
+}, (prevProps, nextProps) => {
+    // Only re-render if the active status changes or the post data itself changes
+    const isPrevActive = prevProps.index === prevProps.currentIndex;
+    const isNextActive = nextProps.index === nextProps.currentIndex;
+    
+    return (
+        isPrevActive === isNextActive && 
+        prevProps.posts[prevProps.index] === nextProps.posts[nextProps.index] &&
+        prevProps.style === nextProps.style
+    );
+});
+
 export const ContinuousFeed: React.FC<ContinuousFeedProps> = ({ className, onVideoChange }) => {
-    const containerRef = useRef<HTMLDivElement>(null);
+    const listRef = useRef<ListImperativeAPI>(null);
     const { tap } = useHaptics();
 
     const [posts, setPosts] = useState<Array<Post & { user: User }>>([]);
@@ -36,8 +85,6 @@ export const ContinuousFeed: React.FC<ContinuousFeedProps> = ({ className, onVid
             const data = await getExplorePosts(0, 10);
 
             if (data) {
-                // Ensure user property exists on posts (api returns Post, we need Post & { user })
-                // The API getExplorePosts returns (Post & { user: User })[] based on the implementation
                 const validPosts = data.filter(p => p.user) as Array<Post & { user: User }>;
                 setPosts(validPosts);
                 setHasMore(data.length === 10);
@@ -79,95 +126,49 @@ export const ContinuousFeed: React.FC<ContinuousFeedProps> = ({ className, onVid
         fetchVideoFeed();
     }, [fetchVideoFeed]);
 
-    // Handle scroll to detect current video
-    const handleScroll = useCallback(() => {
-        if (!containerRef.current) return;
-
-        const container = containerRef.current;
-        const scrollPosition = container.scrollTop;
-        const height = container.clientHeight;
-
-        // Calculate which video is currently visible
-        const newIndex = Math.round(scrollPosition / height);
-
+    // Handle items rendered (for pagination and tracking current index)
+    const onRowsRendered = useCallback(({ startIndex, stopIndex }: any) => {
+        // We assume the top-most visible item is the "current" one in a snap-scroll context
+        const newIndex = startIndex;
+        
         if (newIndex !== currentIndex && newIndex >= 0 && newIndex < posts.length) {
             setCurrentIndex(newIndex);
             if (onVideoChange && posts[newIndex]) {
                 onVideoChange(newIndex, posts[newIndex]);
             }
+        }
 
-            // Load more videos when approaching the end
-            if (newIndex >= posts.length - 3 && hasMore && !loadingMore) {
-                loadMoreVideos();
-            }
+        // Pagination trigger
+        if (stopIndex >= posts.length - 2 && hasMore && !loadingMore) {
+            loadMoreVideos();
         }
     }, [currentIndex, posts, hasMore, loadingMore, loadMoreVideos, onVideoChange]);
 
-    // Intersection Observer for auto-play logic
-    useEffect(() => {
-        if (!containerRef.current) return;
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach((entry) => {
-                    const videoElement = entry.target.querySelector('video');
-                    if (videoElement) {
-                        if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
-                            // Video is mostly visible, play it
-                            try {
-                                videoElement.play();
-                            } catch (e) {
-                                // Auto-play might be blocked
-                            }
-                        } else {
-                            // Video is not visible, pause it
-                            videoElement.pause();
-                        }
-                    }
-                });
-            },
-            {
-                threshold: [0.6],
-                root: containerRef.current,
-            }
-        );
-
-        const videoViews = containerRef.current.querySelectorAll('[data-video-view]');
-        videoViews.forEach((view) => observer.observe(view));
-
-        return () => {
-            observer.disconnect();
-        };
-    }, [posts]);
 
     // Handle fire (like) toggle
-    const handleFireToggle = async (postId: string, _currentFire: number) => {
-        // Optimistic UI update could be added here
+    const handleFireToggle = useCallback(async (postId: string, _currentFire: number) => {
         feedLogger.debug('Fire toggle for post:', postId);
         try {
             const user = await getCurrentUser();
             if (!user) return;
-
             await togglePostFire(postId, user.id);
         } catch (err) {
             console.error(err);
         }
-    };
+    }, []);
 
-    const handleComment = (postId: string) => {
-        // Navigate to post detail
+    const handleComment = useCallback((postId: string) => {
         window.location.href = `/p/${postId}`;
-    };
+    }, []);
 
-    const handleShare = async (postId: string) => {
-        // Share logic
+    const handleShare = useCallback(async (postId: string) => {
         const url = `${window.location.origin}/p/${postId}`;
         if (navigator.share) {
             await navigator.share({ title: 'Zyeuté', url });
         } else {
             await navigator.clipboard.writeText(url);
         }
-    };
+    }, []);
 
     if (isLoading && posts.length === 0) {
         return (
@@ -186,43 +187,39 @@ export const ContinuousFeed: React.FC<ContinuousFeedProps> = ({ className, onVid
         );
     }
 
+    // Data object passed to rows
+    const itemData = {
+        posts,
+        currentIndex,
+        handleFireToggle,
+        handleComment,
+        handleShare
+    };
+
     return (
-        <div
-            ref={containerRef}
-            className={cn(
-                "w-full h-full overflow-y-scroll snap-y snap-mandatory scroll-smooth no-scrollbar",
-                className
-            )}
-            onScroll={handleScroll}
-        >
-            <style>{`
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
-
-            {posts.map((post, index) => (
-                <div key={post.id} data-video-view className="w-full h-full snap-start flex-shrink-0">
-                    <SingleVideoView
-                        post={post}
-                        user={post.user}
-                        isActive={index === currentIndex}
-                        onFireToggle={handleFireToggle}
-                        onComment={handleComment}
-                        onShare={handleShare}
+        <div className={cn("w-full h-full bg-black", className)}>
+            <AutoSizer>
+                {({ height, width }) => (
+                    <List
+                        listRef={listRef}
+                        className="no-scrollbar snap-y snap-mandatory scroll-smooth"
+                        style={{ height, width }}
+                        rowCount={posts.length}
+                        rowHeight={height} // Full screen height per item
+                        rowProps={itemData}
+                        onRowsRendered={onRowsRendered}
+                        overscanCount={1} // Only render 1 item above/below viewport
+                        rowComponent={FeedRow as any}
                     />
-                </div>
-            ))}
-
+                )}
+            </AutoSizer>
+            
             {loadingMore && (
-                <div className="w-full h-20 flex items-center justify-center snap-start">
-                    <div className="w-6 h-6 border-2 border-gold-500/30 border-t-gold-500 rounded-full animate-spin" />
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-none z-50">
+                     <div className="w-6 h-6 border-2 border-gold-500/30 border-t-gold-500 rounded-full animate-spin" />
                 </div>
             )}
         </div>
     );
 };
+

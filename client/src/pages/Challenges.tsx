@@ -82,7 +82,7 @@ export default function Challenges() {
       const progressMap = new Map<string, UserProgress>();
       let points = 0;
 
-      data?.forEach((progress) => {
+      data?.forEach((progress: any) => {
         progressMap.set(progress.challenge_id, progress);
         if (progress.completed) {
           points += progress.points_earned || 0;

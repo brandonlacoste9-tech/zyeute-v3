@@ -13,11 +13,13 @@ import { v3TiGuyChat, v3Flow, v3Feed, v3Microcopy, FAL_PRESETS } from "./v3-swar
 import emailAutomation from "./email-automation.js";
 // Import Studio API routes
 import studioRoutes from "./routes/studio.js";
+import enhanceRoutes from "./routes/enhance.js";
 // [NEW] Import the JWT verifier
 import { verifyAuthToken } from "./supabase-auth.js";
 import debugRoutes from "./api/debug.js";
 // Import tracing utilities
 import { traced, traceDatabase, traceExternalAPI, traceStripe, traceSupabase, addSpanAttributes } from "./tracer.js";
+import { videoQueue } from './queue.js';
 
 // Configure FAL client
 fal.config({
@@ -56,7 +58,7 @@ let stripe: Stripe | null = null;
 
 if (STRIPE_SECRET_KEY) {
   stripe = new Stripe(STRIPE_SECRET_KEY, {
-    apiVersion: "2025-11-17.clover",
+    apiVersion: "2025-12-15.clover",
   });
 } else {
   console.warn("⚠️ STRIPE_SECRET_KEY not found - payment features will be disabled");
@@ -120,6 +122,10 @@ export async function registerRoutes(
 
   // ============ STUDIO AI HIVE ROUTES ============
   app.use("/api/studio", requireAuth, studioRoutes);
+
+  // ============ DEEP ENHANCE ROUTES ============
+  // enhanceRoutes handles /posts/:id/enhance, mounted at /api so it becomes /api/posts/:id/enhance
+  app.use("/api", requireAuth, enhanceRoutes);
 
   // ============ LEGACY AUTH ROUTES (for backward compatibility) ============
 
@@ -430,6 +436,14 @@ export async function registerRoutes(
       }
 
       const post = await storage.createPost(parsed.data);
+
+      // Queue video for processing by Colony OS workers
+      await videoQueue.add('processVideo', {
+        videoUrl: post.mediaUrl,
+        userId: req.userId,
+        visual_filter: req.body.visual_filter || 'prestige'
+      });
+
       res.status(201).json({ post });
     } catch (error) {
       console.error("Create post error:", error);

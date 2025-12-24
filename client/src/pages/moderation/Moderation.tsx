@@ -28,6 +28,10 @@ interface ModerationLog {
   ai_reason: string;
   ai_action: string;
   status: string;
+  human_reviewed?: boolean;
+  human_reviewer_id?: string;
+  human_decision?: string;
+  reviewed_at?: string;
   created_at: string;
 }
 

@@ -3,11 +3,14 @@ import { GUEST_MODE_KEY, GUEST_TIMESTAMP_KEY, GUEST_VIEWS_KEY } from '../lib/con
 
 interface GuestModeContextType {
     isGuest: boolean;
+    viewsCount: number;
+    remainingTime: number;
     setIsGuest: (value: boolean) => void;
     enterGuestMode: () => void;
     exitGuestMode: () => void;
     startGuestSession: () => void;
     endGuestSession: () => void;
+    incrementViews: () => void;
 }
 
 export const GuestModeContext = createContext<GuestModeContextType | undefined>(undefined);
@@ -21,14 +24,48 @@ export function GuestModeProvider({ children }: { children: ReactNode }) {
         return false;
     });
 
+    const [viewsCount, setViewsCount] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return parseInt(localStorage.getItem(GUEST_VIEWS_KEY) || '0', 10);
+        }
+        return 0;
+    });
+
+    const [remainingTime, setRemainingTime] = useState(0);
+
     // Sync localStorage changes to state
     useEffect(() => {
         const handleStorageChange = () => {
             setIsGuest(localStorage.getItem(GUEST_MODE_KEY) === 'true');
+            setViewsCount(parseInt(localStorage.getItem(GUEST_VIEWS_KEY) || '0', 10));
         };
         window.addEventListener('storage', handleStorageChange);
         return () => window.removeEventListener('storage', handleStorageChange);
     }, []);
+
+    // Session Timer & Expiry Check
+    useEffect(() => {
+        if (!isGuest) return;
+
+        const updateTimer = () => {
+            const timestamp = parseInt(localStorage.getItem(GUEST_TIMESTAMP_KEY) || '0', 10);
+            if (!timestamp) return;
+
+            const elapsed = Date.now() - timestamp;
+            const remaining = Math.max(0, 24 * 60 * 60 * 1000 - elapsed);
+            
+            setRemainingTime(remaining);
+
+            if (remaining === 0) {
+                console.log('🎭 [GuestMode] Session expired!');
+                endGuestSession();
+            }
+        };
+
+        updateTimer();
+        const interval = setInterval(updateTimer, 60000); // Update every minute
+        return () => clearInterval(interval);
+    }, [isGuest]);
 
     const enterGuestMode = () => setIsGuest(true);
     const exitGuestMode = () => setIsGuest(false);
@@ -62,17 +99,32 @@ export function GuestModeProvider({ children }: { children: ReactNode }) {
             console.warn('⚠️ [GuestModeContext] Storage cleanup failed:', e);
         }
         setIsGuest(false);
+        setViewsCount(0);
+        setRemainingTime(0);
+    };
+
+    const incrementViews = () => {
+        const newCount = viewsCount + 1;
+        setViewsCount(newCount);
+        try {
+            localStorage.setItem(GUEST_VIEWS_KEY, newCount.toString());
+        } catch (e) {
+            console.warn('⚠️ [GuestModeContext] Failed to save view count:', e);
+        }
     };
 
 
     return (
         <GuestModeContext.Provider value={{
             isGuest,
+            viewsCount,
+            remainingTime,
             setIsGuest,
             enterGuestMode,
             exitGuestMode,
             startGuestSession,
-            endGuestSession
+            endGuestSession,
+            incrementViews
         }}>
             {children}
         </GuestModeContext.Provider>
@@ -96,6 +148,9 @@ export function useGuestMode() {
                 localStorage.setItem('zyeute_guest_views', '0');
             },
             endGuestSession: () => { },
+            incrementViews: () => { },
+            viewsCount: 0,
+            remainingTime: 0,
         };
     }
     return context;

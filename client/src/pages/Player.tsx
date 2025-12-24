@@ -27,7 +27,7 @@ export const Player: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
 
   // Find starting index
-  const startIndex = posts.findIndex((p) => p.id === videoId);
+  const startIndex = posts.findIndex((p: Post) => p.id === videoId);
 
   // Fetch video feed from Supabase
   const fetchVideoFeed = useCallback(async (startingPostId?: string) => {
@@ -81,7 +81,7 @@ export const Player: React.FC = () => {
 
       if (data) {
         // Ensure starting post is in the list
-        if (startingPostId && data.findIndex((p) => p.id === startingPostId) === -1) {
+        if (startingPostId && data.findIndex((p: any) => p.id === startingPostId) === -1) {
           // Fetch the starting post separately
           const { data: startingPostData } = await supabase
             .from('publications')

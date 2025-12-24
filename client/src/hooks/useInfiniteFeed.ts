@@ -33,7 +33,7 @@ export function useInfiniteFeed(feedType: FeedType = 'explore') {
             const params = new URLSearchParams({
                 limit: '20',
                 type: feedType,
-                ...(pageParam && { cursor: pageParam as string }),
+                ...(pageParam ? { cursor: pageParam as string } : {}),
             });
 
             const response = await fetch(`/api/feed/infinite?${params}`, {
@@ -98,7 +98,7 @@ export function useInfiniteFeedManual(feedType: FeedType = 'explore') {
             const params = new URLSearchParams({
                 limit: '20',
                 type: feedType,
-                ...(pageParam && { cursor: pageParam as string }),
+                ...(pageParam ? { cursor: pageParam as string } : {}),
             });
 
             const response = await fetch(`/api/feed/infinite?${params}`, {

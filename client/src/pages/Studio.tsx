@@ -72,7 +72,7 @@ export default function Studio() {
             <div className="aspect-video bg-black rounded-xl overflow-hidden border border-white/10 relative group">
               <video src={videoResult.url} controls className="w-full h-full" />
               <div className="absolute top-4 right-4 bg-black/60 backdrop-blur px-3 py-1 rounded-full text-xs">
-                IA: {videoResult.highlights.length} moments forts détectés
+                IA: {videoResult.highlights?.length || 0} moments forts détectés
               </div>
             </div>
 

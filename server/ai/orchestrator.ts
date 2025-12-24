@@ -7,11 +7,11 @@ import type { HiveTask, HiveTaskResult, BeeCapability } from './types.js';
 import { getBeesByCapability, getBeeById } from './bee-registry.js';
 import { v3Core, v3Mod } from '../v3-swarm.js';
 import { executePythonBee } from './python-bridge.js';
-import { executeTiGuyChatBee } from './bees/ti-guy-chat.js';
-import { executeStudioCaptionBee } from './bees/studio-caption.js';
-import { executeStudioImageBee } from './bees/studio-image.js';
-import { executeStudioVideoBee } from './bees/studio-video.js';
-import { executePostComposerBee } from './bees/post-composer.js';
+import { run as executeTiGuyChatBee } from './bees/ti-guy-chat.js';
+import { run as executeStudioCaptionBee } from './bees/studio-caption.js';
+import { run as executeStudioImageBee } from './bees/studio-image.js';
+import { run as executeStudioVideoBee } from './bees/studio-video.js';
+import { run as executePostComposerBee } from './bees/post-composer.js';
 import { recordTask } from '../colony/metrics-bridge.js';
 
 /**
@@ -44,7 +44,7 @@ export class HiveOrchestrator {
             let result;
             if (bee.endpoint === 'colony_tasks') {
                 // Python bee - queue to Colony OS
-                result = await executePythonBee(bee.id, task.payload);
+                result = await executePythonBee(bee.id, task);
             } else {
                 // TypeScript bee - execute directly
                 result = await this.executeTypescriptBee(bee.id, task.payload);

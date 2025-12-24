@@ -46,6 +46,13 @@ export interface Post {
   hashtags: string[] | null;
   region: string | null;
   city: string | null;
+
+  // Deep Enhance Fields
+  original_url?: string;
+  enhanced_url?: string;
+  processing_status?: 'ready' | 'pending' | 'processing' | 'completed' | 'failed';
+  visual_filter?: string;
+
   fire_count: number;
   fireCount?: number;
   comment_count: number;
@@ -183,7 +190,7 @@ export interface PaginatedResponse<T> {
 }
 
 // Component prop types
-export type ButtonVariant = 'primary' | 'outline' | 'ghost' | 'icon';
+export type ButtonVariant = 'primary' | 'outline' | 'ghost' | 'icon' | 'destructive';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';

@@ -71,7 +71,12 @@ export const PostDetail: React.FC = () => {
 
           setPost({
             ...postData,
-            user_fire: fireData ? { fire_level: fireData.fire_level } : undefined,
+            user_fire: fireData ? { 
+              fire_level: fireData.fire_level,
+              user_id: (await supabase.auth.getUser()).data.user?.id || '',
+              post_id: id,
+              created_at: new Date().toISOString()
+            } : undefined,
           });
         }
       } catch (error) {
@@ -113,8 +118,8 @@ export const PostDetail: React.FC = () => {
           table: 'comments',
           filter: `post_id=eq.${id}`,
         },
-        (payload) => {
-          setComments(prev => [...prev, payload.new as CommentType]);
+        (payload: { new: CommentType }) => {
+          setComments(prev => [...prev, payload.new]);
         }
       )
       .subscribe();

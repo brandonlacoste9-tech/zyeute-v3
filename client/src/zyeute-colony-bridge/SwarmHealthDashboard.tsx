@@ -47,17 +47,14 @@ export function SwarmHealthDashboard() {
       const circuits: CircuitStatus[] = [
         {
           name: 'DeepSeek API',
-          state: deepSeekCircuit.getState(),
           ...deepSeekCircuit.getStats()
         },
         {
           name: 'Colony Swarm',
-          state: swarmCircuit.getState(),
           ...swarmCircuit.getStats()
         },
         {
           name: 'Supabase',
-          state: supabaseCircuit.getState(),
           ...supabaseCircuit.getStats()
         }
       ];

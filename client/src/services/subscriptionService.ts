@@ -326,8 +326,8 @@ export async function getCreatorRevenue(creatorId: string): Promise<RevenueSumma
       .gte('created_at', firstDayLastMonth.toISOString())
       .lt('created_at', firstDayThisMonth.toISOString());
 
-    const thisMonthTotal = thisMonthEarnings?.reduce((sum, e) => sum + parseFloat(e.creator_net), 0) || 0;
-    const lastMonthTotal = lastMonthEarnings?.reduce((sum, e) => sum + parseFloat(e.creator_net), 0) || 0;
+    const thisMonthTotal = thisMonthEarnings?.reduce((sum: number, e: any) => sum + parseFloat(e.creator_net), 0) || 0;
+    const lastMonthTotal = lastMonthEarnings?.reduce((sum: number, e: any) => sum + parseFloat(e.creator_net), 0) || 0;
 
     return {
       total_earnings: userData?.total_earnings || 0,

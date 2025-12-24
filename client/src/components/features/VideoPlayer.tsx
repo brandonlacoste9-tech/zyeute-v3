@@ -19,6 +19,8 @@ export interface VideoPlayerProps {
   onEnded?: () => void;
   onPlay?: () => void;
   onPause?: () => void;
+  style?: React.CSSProperties;
+  videoStyle?: React.CSSProperties;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -31,6 +33,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onEnded,
   onPlay,
   onPause,
+  style,
+  videoStyle,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(autoPlay);
@@ -223,6 +227,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   return (
     <div
       className={cn('relative group video-hover-glow rounded-xl overflow-hidden', className)}
+      style={style}
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => setShowControls(false)}
       onClick={togglePlay}
@@ -237,6 +242,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         loop={loop}
         playsInline
         className="w-full h-full object-cover"
+        style={videoStyle}
         onError={handleError}
         onCanPlay={handleCanPlay}
         onLoadStart={handleLoadStart}

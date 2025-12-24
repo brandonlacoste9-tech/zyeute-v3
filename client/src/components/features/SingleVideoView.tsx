@@ -35,15 +35,39 @@ export const SingleVideoView: React.FC<SingleVideoViewProps> = ({
   // Real-time Presence & Engagement
   const { viewerCount, engagement } = usePresence(post.id);
   const [isLiked, setIsLiked] = useState(false);
+  const [showHeartAnimation, setShowHeartAnimation] = useState(false);
 
   // Derive counts from props OR real-time updates
   const fireCount = engagement.fireCount ?? post.fire_count;
   const commentCount = engagement.commentCount ?? post.comment_count;
 
   const handleFire = () => {
-    setIsLiked(!isLiked);
-    onFireToggle?.(post.id, fireCount);
+    // Only toggle if not already liked (or toggle off?)
+    // Double tap usually only LIKES (doesn't unlike).
+    // If double tap, we force like? 
+    // But handleFire toggles.
+    // Let's make handleDoubleTap force like if not liked, or just trigger animation?
+    // Usually double tap always shows animation.
+    setIsLiked(true);
+    if (!isLiked) {
+        onFireToggle?.(post.id, fireCount);
+    }
     impact();
+  };
+  
+  const handleLikeToggle = () => {
+      setIsLiked(!isLiked);
+      onFireToggle?.(post.id, fireCount);
+      impact();
+  }
+
+  const handleDoubleTap = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      handleFire();
+      setShowHeartAnimation(true);
+      setTimeout(() => setShowHeartAnimation(false), 800);
+      impact();
   };
 
   const handleComment = () => {
@@ -56,33 +80,75 @@ export const SingleVideoView: React.FC<SingleVideoViewProps> = ({
     tap();
   };
 
+  // Deep Enhance: Select best video source
+  const videoSrc = (post.processing_status === 'ready' && post.enhanced_url) 
+    ? post.enhanced_url 
+    : (post.media_url || post.original_url || '');
+
+  // Deep Enhance: Visual Filters
+  const filterStyle = post.visual_filter && post.visual_filter !== 'none' 
+    ? { filter: post.visual_filter } 
+    : {};
+
   return (
     <div
       ref={videoRef}
-      className="w-full h-full flex-shrink-0 snap-center snap-always relative bg-black"
+      className="w-full h-full flex-shrink-0 snap-center snap-always relative bg-black select-none"
+      onDoubleClick={handleDoubleTap}
     >
       {/* Full-screen Media */}
       <div className="absolute inset-0 w-full h-full">
         {post.type === 'video' ? (
           <VideoPlayer
-            src={post.media_url}
-            poster={post.media_url}
+            src={videoSrc}
+            poster={post.thumbnail_url || post.media_url} 
             autoPlay={isActive}
             muted={!isActive}
             loop
             className="w-full h-full object-cover"
+            style={filterStyle} 
           />
         ) : (
           <img
             src={post.media_url}
             alt={post.caption || 'Post media'}
             className="w-full h-full object-cover"
+            style={filterStyle}
           />
         )}
       </div>
 
+       {/* Double Tap Heart Animation */}
+       {showHeartAnimation && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50 animate-heart-pump">
+            <svg 
+                className="w-24 h-24 text-orange-500 drop-shadow-[0_0_15px_rgba(255,100,0,0.8)]"
+                fill="currentColor" 
+                viewBox="0 0 24 24"
+            >
+                 <path d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+            </svg>
+        </div>
+      )}
+
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none" />
+
+      {/* Deep Enhance Status Badge (Top Right) */}
+      <div className="absolute top-16 right-4 z-20 flex flex-col gap-2 items-end">
+         {post.processing_status === 'ready' && post.enhanced_url && (
+            <div className="bg-gold-500/90 text-black px-2 py-0.5 rounded-full text-[10px] font-bold shadow-lg flex items-center gap-1 backdrop-blur-md animate-in fade-in zoom-in duration-300">
+               <span>✨</span>
+               <span>4K ULTRA</span>
+            </div>
+         )}
+         {post.processing_status === 'processing' && (
+            <div className="bg-black/60 text-white border border-white/20 px-2 py-0.5 rounded-full text-[10px] flex items-center gap-1 backdrop-blur-md">
+               <span className="animate-spin">⚙️</span>
+               <span>Enhancing...</span>
+            </div>
+         )}
+      </div>
 
       {/* User Info Overlay (Top Left) */}
       <div className="absolute top-4 left-4 right-4 z-10 flex items-center gap-3">
@@ -169,8 +235,11 @@ export const SingleVideoView: React.FC<SingleVideoViewProps> = ({
         <div className="absolute right-4 bottom-20 flex flex-col items-center gap-6">
           {/* Fire Button */}
           <button
-            onClick={handleFire}
-            className={`flex flex-col items-center gap-1 transition-all ${isLiked
+            onClick={(e) => {
+                e.stopPropagation();
+                handleLikeToggle();
+            }}
+            className={`flex flex-col items-center gap-1 transition-all press-scale ${isLiked
               ? 'text-orange-500 scale-110 drop-shadow-[0_0_10px_rgba(255,100,0,0.6)]'
               : 'text-white hover:text-gold-400'
               }`}
@@ -200,8 +269,11 @@ export const SingleVideoView: React.FC<SingleVideoViewProps> = ({
 
           {/* Comment Button */}
           <button
-            onClick={handleComment}
-            className="flex flex-col items-center gap-1 text-white hover:text-gold-400 transition-colors"
+            onClick={(e) => {
+                e.stopPropagation();
+                handleComment();
+            }}
+            className="flex flex-col items-center gap-1 text-white hover:text-gold-400 transition-colors press-scale"
           >
             <svg
               className="w-8 h-8"
@@ -223,8 +295,11 @@ export const SingleVideoView: React.FC<SingleVideoViewProps> = ({
 
           {/* Share Button */}
           <button
-            onClick={handleShare}
-            className="text-white hover:text-gold-400 transition-colors"
+            onClick={(e) => {
+                e.stopPropagation();
+                handleShare();
+            }}
+            className="text-white hover:text-gold-400 transition-colors press-scale"
           >
             <svg
               className="w-8 h-8"

@@ -5,8 +5,9 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
 
+export type ButtonVariant = 'primary' | 'outline' | 'ghost' | 'icon' | 'destructive';
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'outline' | 'ghost' | 'icon';
+  variant?: ButtonVariant;
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
@@ -35,6 +36,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       outline: 'border-2 border-gold-500 text-gold-500 hover:bg-gold-500/10 hover:border-gold-400',
       ghost: 'text-gold-500 hover:bg-gold-500/10',
       icon: 'text-white hover:text-gold-400 hover:bg-white/10',
+      destructive: 'bg-red-600 text-white hover:bg-red-700 shadow-sm shadow-red-500/20',
     };
 
     const sizes = {

@@ -73,6 +73,12 @@ export const posts = pgTable("publications", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   mediaUrl: text("media_url"), // Optional in some cases?
+  originalUrl: text("original_url"), // Backup of original upload
+  enhancedUrl: text("enhanced_url"), // URL of upscaled/enhanced version
+  processingStatus: text("processing_status").default('ready'), // ready, pending, processing, completed, failed
+  visualFilter: text("visual_filter").default('none'),
+  enhanceStartedAt: timestamp("enhance_started_at"),
+  enhanceFinishedAt: timestamp("enhance_finished_at"),
   content: text("content").notNull(), // Confirmed required by DB insert error
   caption: text("caption"),
   visibility: text("visibilite").default('public'),

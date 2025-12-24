@@ -136,13 +136,13 @@ export class TiGuySwarmAdapter {
                 if (status === 'done') {
                   clearTimeout(timeout);
                   subscription.unsubscribe();
-                  resolve({
+                resolve({
                     bee: {
                       id: `bee-${targetBee}-${Date.now()}`,
-                      type: targetBee,
+                      type: targetBee as BeeType,
                       name: `${targetBee.charAt(0).toUpperCase() + targetBee.slice(1)}Bee`,
-                      status: 'idle',
-                      specialty: targetBee
+                      status: 'idle' as const,
+                      specialty: targetBee as string
                     },
                     content: result || "Tâche complétée.",
                     confidence: 1.0
@@ -171,9 +171,9 @@ export class TiGuySwarmAdapter {
             return {
               bee: {
                 id: 'ti-guy-fallback',
-                type: 'joual',
+                type: 'joual' as BeeType,
                 name: 'Ti-Guy (Fallback)',
-                status: 'working',
+                status: 'working' as const,
                 specialty: 'Emergency Response'
               },
               content: `${generateJoualResponse('encouragement')} J'peux pas rejoindre l'agent ${targetBee} là, mais j'suis là pour t'aider! 🐝`,

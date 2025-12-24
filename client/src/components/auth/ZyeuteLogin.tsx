@@ -4,7 +4,7 @@ import { signInWithBiometrics, isBiometricAvailable, signIn, signInWithGoogle } 
 import { useAuth } from '@/contexts/AuthContext';
 import './ZyeuteLogin.css';
 
-const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 const FleurDeLis = () => (
   <svg viewBox="0 0 100 100" className="fleur-de-lis">
@@ -38,8 +38,9 @@ const ZyeuteLogin: React.FC = () => {
     try {
       const { data, error } = await signIn(email, password);
       if (error) {
-        console.error('Login error:', error.message);
-        alert('Erreur de connexion: ' + error.message);
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error('Login error:', msg);
+        alert('Erreur de connexion: ' + msg);
       } else {
         console.log('✅ Connexion réussie!');
         // Auth context will handle the redirect
@@ -57,8 +58,9 @@ const ZyeuteLogin: React.FC = () => {
     try {
       const { data, error } = await signInWithGoogle();
       if (error) {
-        console.error('Google login error:', error.message);
-        alert('Erreur de connexion Google: ' + error.message);
+        const msg = (error as any)?.message || String(error);
+        console.error('Google login error:', msg);
+        alert('Erreur de connexion Google: ' + msg);
       } else {
         console.log('✅ Connexion Google réussie!');
       }
@@ -75,8 +77,9 @@ const ZyeuteLogin: React.FC = () => {
     try {
       const { data, error } = await signInWithBiometrics();
       if (error) {
-        console.error('Biometric login error:', error.message);
-        alert('Erreur d\'authentification biométrique: ' + error.message);
+        const msg = (error as any)?.message || String(error);
+        console.error('Biometric login error:', msg);
+        alert('Erreur d\'authentification biométrique: ' + msg);
       } else {
         console.log('✅ Authentification biométrique réussie!');
       }

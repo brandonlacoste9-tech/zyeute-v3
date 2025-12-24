@@ -16,7 +16,7 @@ export function SwarmDebug() {
         fetchTasks();
         const subscription = supabase
             .channel('colony_tasks')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'colony_tasks' }, (payload) => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'colony_tasks' }, (_payload: any) => {
                 fetchTasks();
             })
             .subscribe();

@@ -4,6 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { type Session } from '@supabase/supabase-js';
 import { toast } from '../components/Toast';
 import type { Notification } from '../types';
 import { logger } from '../lib/logger';
@@ -38,7 +39,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     fetchUser();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
       setCurrentUserId(session?.user?.id || null);
     });
 
@@ -67,7 +68,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       if (data) {
         setNotifications(data);
-        const unread = data.filter(n => !n.is_read).length;
+        const unread = data.filter((n: Notification) => !n.is_read).length;
         setUnreadCount(unread);
       }
     } catch (error) {
@@ -98,8 +99,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           table: 'notifications',
           filter: `user_id=eq.${currentUserId}`,
         },
-        async (payload) => {
-          const newNotification = payload.new as Notification;
+        async (payload: { new: Notification }) => {
+          const newNotification = payload.new;
 
           // Fetch actor details
           const { data: actor } = await supabase

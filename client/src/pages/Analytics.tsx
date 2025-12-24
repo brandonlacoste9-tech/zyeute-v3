@@ -82,7 +82,7 @@ export const Analytics: React.FC = () => {
           .eq('user_id', currentUser.id)
           .gte('created_at', startDate.toISOString());
 
-        const totalFires = firePosts?.reduce((sum, post) => sum + (post.fire_count || 0), 0) || 0;
+        const totalFires = firePosts?.reduce((sum: number, post: any) => sum + (post.fire_count || 0), 0) || 0;
 
         // Get total comments
         const { count: totalComments } = await supabase

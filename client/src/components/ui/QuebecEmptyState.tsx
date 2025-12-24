@@ -6,9 +6,13 @@ interface QuebecEmptyStateProps {
   type: 'feed' | 'profile' | 'search' | 'media';
   action?: () => void;
   label?: string;
+  title?: string;
+  description?: string;
+  actionText?: string;
+  onAction?: () => void;
 }
 
-export function QuebecEmptyState({ type, action, label }: QuebecEmptyStateProps) {
+export function QuebecEmptyState({ type, action, label, title, description, actionText, onAction }: QuebecEmptyStateProps) {
   const content = {
     feed: {
       title: "C'est tranquille icitte...",
@@ -43,21 +47,21 @@ export function QuebecEmptyState({ type, action, label }: QuebecEmptyStateProps)
       <div className="bg-white p-4 rounded-full shadow-sm mb-4 ring-1 ring-gold-primary/20">
         <Icon className="h-8 w-8 text-gold-primary" />
       </div>
-      
+
       <h3 className="text-xl font-bold text-leather-primary mb-2 font-serif">
-        {content.title}
+        {title || content.title}
       </h3>
       
       <p className="text-gray-600 max-w-sm mb-6 text-sm">
-        {content.description}
+        {description || content.description}
       </p>
 
-      {content.button && action && (
+      {(onAction || (content.button && action)) && (
         <Button 
-          onClick={action}
+          onClick={onAction || action}
           className="bg-leather-primary text-white hover:bg-leather-primary/90"
         >
-          {label || content.button}
+          {actionText || label || content.button}
         </Button>
       )}
     </div>

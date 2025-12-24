@@ -16,7 +16,7 @@ import type { Post, User } from '../../types';
 
 interface VideoCardProps {
   post: Post;
-  user: User;
+  user?: User;
   variant?: 'horizontal' | 'vertical';
   autoPlay?: boolean;
   muted?: boolean;
@@ -39,6 +39,19 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
 }) => {
   const navigate = useNavigate();
   const { tap } = useHaptics();
+
+  // Handle missing user by using user from post relation
+  const effectiveUser = user || post.user;
+
+  if (!effectiveUser) {
+    return (
+      <div className="leather-card p-4 text-center text-stone-500 text-xs">
+        Contenu indisponible
+      </div>
+    );
+  }
+
+  const userToUse = effectiveUser;
 
   // Real-time Presence & Engagement
   const { viewerCount, engagement } = usePresence(post.id);
@@ -80,22 +93,22 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
         'flex items-center gap-3 border-b border-neutral-800 bg-black/20',
         isHorizontal ? 'p-2' : 'p-3'
       )}>
-        <Link to={`/profile/${user.username}`} className="relative">
+        <Link to={`/profile/${userToUse.username}`} className="relative">
           <div className="absolute inset-0 rounded-full border border-gold-500/30 blur-[1px]"></div>
           <Avatar
-            src={user.avatar_url}
+            src={userToUse.avatar_url}
             size="md"
-            isVerified={user.is_verified}
+            isVerified={userToUse.is_verified}
             className="ring-2 ring-gold-500/20"
           />
         </Link>
         <div className="flex-1">
           <Link
-            to={`/profile/${user.username}`}
+            to={`/profile/${userToUse.username}`}
             className="font-bold text-stone-200 hover:text-gold-400 transition-colors flex items-center gap-1"
           >
-            {user.display_name || user.username}
-            {user.is_verified && <span className="text-gold-500 drop-shadow-[0_0_2px_rgba(255,191,0,0.5)]">✓</span>}
+            {userToUse.display_name || userToUse.username}
+            {userToUse.is_verified && <span className="text-gold-500 drop-shadow-[0_0_2px_rgba(255,191,0,0.5)]">✓</span>}
           </Link>
           {post.region && (
             <p className="text-stone-500 text-xs flex items-center gap-1">
@@ -223,7 +236,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
             onClick={(e) => {
               e.stopPropagation();
               tap();
-              onGift?.(post.id, user);
+              onGift?.(post.id, userToUse);
             }}
             className="flex items-center gap-1.5 text-stone-400 hover:text-gold-500 transition-all hover:scale-110"
             data-testid={`button-gift-${post.id}`}
@@ -260,8 +273,8 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
             'text-stone-300 leading-relaxed',
             isHorizontal ? 'text-xs line-clamp-2' : 'text-sm'
           )}>
-            <Link to={`/profile/${user.username}`} className="font-bold text-gold-400 hover:text-gold-300 mr-2">
-              {user.username}
+            <Link to={`/profile/${userToUse.username}`} className="font-bold text-gold-400 hover:text-gold-300 mr-2">
+              {userToUse.username}
             </Link>
             <span
               className="text-stone-300"
@@ -313,7 +326,7 @@ export const VideoCard = React.memo(VideoCardComponent, (prevProps, nextProps) =
     prevProps.post.id === nextProps.post.id &&
     prevProps.post.fire_count === nextProps.post.fire_count &&
     prevProps.post.is_fired === nextProps.post.is_fired &&
-    prevProps.user.id === nextProps.user.id &&
+    (prevProps.user?.id === nextProps.user?.id) &&
     prevProps.variant === nextProps.variant &&
     prevProps.autoPlay === nextProps.autoPlay &&
     prevProps.muted === nextProps.muted &&
@@ -324,6 +337,28 @@ export const VideoCard = React.memo(VideoCardComponent, (prevProps, nextProps) =
     prevProps.post.gift_count === nextProps.post.gift_count
   );
 });
+
+export const VideoCardSkeleton: React.FC = () => (
+  <div className="leather-card rounded-2xl overflow-hidden stitched w-full animate-pulse">
+    <div className="flex items-center gap-3 p-3 border-b border-neutral-800">
+      <div className="w-10 h-10 rounded-full bg-neutral-800" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3 w-20 bg-neutral-800 rounded" />
+        <div className="h-2 w-12 bg-neutral-800 rounded" />
+      </div>
+    </div>
+    <div className="aspect-[4/5] bg-neutral-800" />
+    <div className="p-4 space-y-3">
+      <div className="flex gap-4">
+        <div className="w-8 h-8 rounded bg-neutral-800" />
+        <div className="w-8 h-8 rounded bg-neutral-800" />
+        <div className="w-8 h-8 rounded bg-neutral-800" />
+      </div>
+      <div className="h-4 w-full bg-neutral-800 rounded" />
+      <div className="h-4 w-2/3 bg-neutral-800 rounded" />
+    </div>
+  </div>
+);
 
 VideoCard.displayName = 'VideoCard';
 
