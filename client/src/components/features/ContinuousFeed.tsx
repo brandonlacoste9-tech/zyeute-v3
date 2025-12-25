@@ -11,6 +11,7 @@ import AutoSizer from 'react-virtualized-auto-sizer';
 import { SingleVideoView } from './SingleVideoView';
 import { getExplorePosts, togglePostFire, getCurrentUser } from '@/services/api';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useVideoPreloader } from '@/hooks/useVideoPreloader';
 import type { Post, User } from '@/types';
 import { logger } from '../../lib/logger';
 import { cn } from '../../lib/utils';
@@ -23,22 +24,25 @@ interface ContinuousFeedProps {
 }
 
 const FeedRow = memo(({ index, style, data }: ListChildComponentProps) => {
-    const { posts, currentIndex, handleFireToggle, handleComment, handleShare } = data;
+    const { posts, currentIndex, handleFireToggle, handleComment, handleShare, getPreloadedUrl } = data;
     const post = posts[index];
     const isActive = index === currentIndex;
 
     // Use a ref to ensure we only try to play properly mounted videos
     const rowRef = useRef<HTMLDivElement>(null);
 
-    // Note: SingleVideoView handles playback via isActive prop
-    // Redundant DOM manipulation removed for cleanliness and to prevent conflicts
-
     if (!post) return null;
+
+    // Inject preloaded blob URL if available
+    const effectivePost = {
+        ...post,
+        mediaUrl: getPreloadedUrl(post.mediaUrl)
+    };
 
     return (
         <div style={style} ref={rowRef} data-video-index={index} className="w-full h-full">
             <SingleVideoView
-                post={post}
+                post={effectivePost}
                 user={post.user}
                 isActive={isActive}
                 onFireToggle={handleFireToggle}
@@ -54,11 +58,50 @@ const FeedRow = memo(({ index, style, data }: ListChildComponentProps) => {
 
     const isPrevActive = prevProps.index === prevData.currentIndex;
     const isNextActive = nextProps.index === nextData.currentIndex;
+    
+    // Also check if the preloaded URL changed (i.e., blob became available)
+    // getPreloadedUrl is a new function ref on every render of Parent if hook state changes
+    // But since we pass it in itemData, and itemData is recreated...
+    // We rely on `prevData.getPreloadedUrl !== nextData.getPreloadedUrl` implicitly causing re-renders?
+    // Actually, FeedRow memoization comparison needs to be careful.
+    // If we want the row to re-render when the blob arrives, we need to know if the result of getPreloadedUrl(thisPost) changed.
+    
+    // Simple way: check if itemData changed reference?
+    // The default `memo` compares props. `data` is a prop.
+    // If `ContinuousFeed` re-renders (state update in hook -> setBlobCache -> re-render ContinuousFeed -> new itemData object),
+    // then `prevProps.data !== nextProps.data`.
+    // BUT we have a custom comparison function here!
+    
+    // We MUST update the comparison to check data equality strictly or specific fields.
+    // Since `getPreloadedUrl` relies on closure state, if `data` reference changes, we might want to re-render.
+    // But we don't want to re-render ALL rows every time a blob loads for ONE row.
+    
+    // Ideally: Check if `getPreloadedUrl(post.mediaUrl)` result changed?
+    // But we can't call the function easily here without cost.
+    
+    // Compromise: Just re-render if data reference changes? No, that defeats virtualization perf.
+    // However, React Window passes a NEW `data` prop every time the parent renders if we defined `itemData` inline (which we did).
+    // So `prevData !== nextData` is always true if parent re-renders.
+    
+    // The current comparison:
+    // prevData.posts[prevProps.index] === nextData.posts[nextProps.index]
+    
+    // We need to add:
+    // && prevData.getPreloadedUrl(post.mediaUrl) === nextData.getPreloadedUrl(post.mediaUrl)
+    // But `post` is inside the lists.
+    
+    const prevPost = prevData.posts[prevProps.index];
+    const nextPost = nextData.posts[nextProps.index];
+    
+    // Check if resolved URL actually changed for this specific row
+    const prevUrl = prevData.getPreloadedUrl ? prevData.getPreloadedUrl(prevPost?.mediaUrl) : prevPost?.mediaUrl;
+    const nextUrl = nextData.getPreloadedUrl ? nextData.getPreloadedUrl(nextPost?.mediaUrl) : nextPost?.mediaUrl;
 
     return (
         isPrevActive === isNextActive &&
-        prevData.posts[prevProps.index] === nextData.posts[nextProps.index] &&
-        prevProps.style === nextProps.style
+        prevPost === nextPost &&
+        prevProps.style === nextProps.style &&
+        prevUrl === nextUrl
     );
 });
 
@@ -217,13 +260,17 @@ export const ContinuousFeed: React.FC<ContinuousFeedProps> = ({ className, onVid
         );
     }
 
+    // Preload videos
+    const { getPreloadedUrl } = useVideoPreloader(posts, currentIndex);
+
     // Data object passed to rows
     const itemData = {
         posts,
         currentIndex,
         handleFireToggle,
         handleComment,
-        handleShare
+        handleShare,
+        getPreloadedUrl // Pass the helper
     };
 
     return (

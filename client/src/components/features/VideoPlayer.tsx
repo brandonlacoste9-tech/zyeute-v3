@@ -178,6 +178,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Handle potential JSON src for multiple qualities
   const getVideoSrc = (source: string | undefined) => {
     if (!source) return '';
+    
+    // If it's already a blob URL (from preloader), use it directly
+    if (source.startsWith('blob:')) return source;
+
     try {
       // Check if source is a JSON string containing qualities
       if (source.trim().startsWith('{')) {
