@@ -19,6 +19,7 @@ import { verifyAuthToken } from "./supabase-auth.js";
 import debugRoutes from "./api/debug.js";
 // Import tracing utilities
 import { traced, traceDatabase, traceExternalAPI, traceStripe, traceSupabase, addSpanAttributes } from "./tracer.js";
+import { processQuery } from "../utils/tiguy-patterns.js";
 import { getVideoQueue } from './queue.js';
 
 // Configure FAL client
@@ -783,6 +784,26 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Ti-Guy AI error:", error);
       res.status(500).json({ error: error.message || "Ti-Guy est fatigué, réessaie plus tard!" });
+    }
+  });
+
+  // Free Scripted Ti-Guy Chat (No AI Cost)
+  app.post("/api/tiguy/chat", aiRateLimiter, async (req, res) => {
+    try {
+      const { message } = req.body;
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      // Simulate network delay for natural feel
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const response = processQuery(message);
+      
+      res.json({ response: response.message, type: response.type });
+    } catch (error: any) {
+      console.error("Ti-Guy chat error:", error);
+      res.status(500).json({ error: "Ti-Guy est parti à pêche! Réessaie plus tard." });
     }
   });
 
