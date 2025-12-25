@@ -65,6 +65,16 @@ async function seed() {
         region: 'montreal' as const,
         isVerified: false,
       },
+      {
+        id: crypto.randomUUID(),
+        username: 'team_zyeute',
+        email: 'team@zyeute.qc.ca',
+        displayName: "L'Équipe Zyeuté",
+        bio: 'Compte officiel de Zyeuté. On surveille tout! 👀',
+        avatarUrl: 'https://images.unsplash.com/photo-1579547621869-0ddb29f36e11?w=400',
+        region: 'montreal' as const,
+        isVerified: true,
+      },
     ];
     
     const createdUsers = await db.insert(users).values(demoUsers).returning();
@@ -72,6 +82,18 @@ async function seed() {
     
     // Create sample posts - 25+ Quebec-themed posts for rich content
     const samplePosts = [
+      {
+        id: crypto.randomUUID(),
+        userId: createdUsers[createdUsers.length - 1].id, // Last user is team_zyeute
+        type: 'photo',
+        mediaUrl: 'https://images.unsplash.com/photo-1549603091-a621c9777f99?w=800', // Fireworks / Celebration
+        content: "🚨 ALERTE LANCEMENT! On donne 3 mois VIP aux 100 premiers! Taggue un ami qui a besoin de voir ça! 👇 #Zyeute #Quebec",
+        caption: "🚨 ALERTE LANCEMENT! On donne 3 mois VIP aux 100 premiers! Taggue un ami qui a besoin de voir ça! 👇 #Zyeute #Quebec",
+        hashtags: ['Zyeute', 'Quebec', 'Lancement'],
+        region: 'montreal' as const,
+        visibility: 'public' as const,
+        fireCount: 842,
+      },
       {
         id: crypto.randomUUID(),
         userId: createdUsers[0].id,

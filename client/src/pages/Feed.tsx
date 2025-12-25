@@ -12,6 +12,8 @@ import { GiftOverlay } from '@/components/features/GiftOverlay';
 import { Onboarding, useOnboarding } from '@/components/Onboarding';
 import { getCurrentUser, getStories } from '@/services/api';
 import { ContinuousFeed } from '@/components/features/ContinuousFeed';
+import { PromoBanner } from '@/components/features/PromoBanner';
+import { SuccessModal } from '@/components/features/SuccessModal';
 
 import type { User, Story } from '@/types';
 import { logger } from '../lib/logger';
@@ -34,6 +36,9 @@ export const Feed: React.FC = () => {
   const [giftModalOpen, setGiftModalOpen] = useState(false);
   const [selectedRecipient, setSelectedRecipient] = useState<User | null>(null);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+
+  // VIP Promo Modal state
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
   // Gift overlay animation state
   const [showGiftOverlay, setShowGiftOverlay] = useState(false);
@@ -119,6 +124,10 @@ export const Feed: React.FC = () => {
         <Onboarding onComplete={completeOnboarding} />
       )}
 
+
+      {/* VIP Promo Banner */}
+      <PromoBanner onClaim={() => setIsSuccessModalOpen(true)} />
+
       {/* Premium Header - Fixed Top */}
       <div className="flex-none z-30 bg-neutral-900/95 backdrop-blur-md border-b border-gold-500/30 shadow-lg shadow-black/50">
         <div className="max-w-2xl mx-auto px-4 py-3">
@@ -185,7 +194,6 @@ export const Feed: React.FC = () => {
         />
       )}
 
-      {/* Gift Overlay Animation */}
       <GiftOverlay
         giftType={sentGiftType}
         emoji={sentGiftEmoji}
@@ -193,6 +201,9 @@ export const Feed: React.FC = () => {
         isVisible={showGiftOverlay}
         onComplete={() => setShowGiftOverlay(false)}
       />
+
+      {/* VIP Success Modal */}
+      <SuccessModal isOpen={isSuccessModalOpen} onClose={() => setIsSuccessModalOpen(false)} />
     </div>
   );
 };
