@@ -4,8 +4,6 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import { metaImagesPlugin } from "./vite-plugin-meta-images";
 
-const isReplit = process.env.REPL_ID !== undefined;
-
 export default defineConfig({
   plugins: [
     react(),
@@ -18,6 +16,13 @@ export default defineConfig({
       "@shared": path.resolve(import.meta.dirname, "shared"),
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
     },
+  },
+  // Fix for react-window CommonJS/ESM compatibility
+  optimizeDeps: {
+    include: [
+      'react-window',
+      'react-virtualized-auto-sizer'
+    ]
   },
   css: {
     postcss: {
@@ -39,7 +44,7 @@ export default defineConfig({
       output: {
         // Manual chunk splitting for better caching
         manualChunks: {
-          // React core vendorchunks (changes infrequently)
+          // React core vendor chunks (changes infrequently)
           "react-vendor": ["react", "react-dom", "react-router-dom"],
 
           // UI library chunks
@@ -73,6 +78,9 @@ export default defineConfig({
             "tailwind-merge",
             "date-fns",
           ],
+
+          // Virtualization (for infinite scroll)
+          "virtualization": ["react-window", "react-virtualized-auto-sizer"],
         },
         // Naming pattern for chunks
         chunkFileNames: "assets/[name]-[hash].js",

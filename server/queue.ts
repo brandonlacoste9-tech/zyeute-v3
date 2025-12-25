@@ -3,7 +3,6 @@ import { Queue } from 'bullmq';
 // Lazy Singleton Pattern - Queues are only created when actually used
 let videoQueueInstance: Queue | null = null;
 let analyticsQueueInstance: Queue | null = null;
-let blockchainQueueInstance: Queue | null = null;
 
 const connection = {
   host: process.env.REDIS_HOST,
@@ -64,25 +63,6 @@ export const getAnalyticsQueue = (): Queue => {
   console.log("🔌 Initializing Analytics Queue Redis connection...");
   analyticsQueueInstance = new Queue('colony-analytics', { connection });
   return analyticsQueueInstance;
-};
-
-// 🔗 QUEUE 3: Blockchain Sync (KryptoTrac - Future)
-export const getBlockchainQueue = (): Queue => {
-  if (blockchainQueueInstance) {
-    return blockchainQueueInstance;
-  }
-
-  if (!process.env.REDIS_HOST) {
-    console.warn("⚠️ REDIS_HOST not defined. Blockchain queue disabled.");
-    return {
-      add: async () => console.log("Mock Blockchain Queue: Job added (Redis missing)"),
-      close: async () => console.log("Mock Blockchain Queue: Close called"),
-    } as unknown as Queue;
-  }
-
-  console.log("🔌 Initializing Blockchain Queue Redis connection...");
-  blockchainQueueInstance = new Queue('colony-blockchain', { connection });
-  return blockchainQueueInstance;
 };
 
 // Export type for TypeScript usage

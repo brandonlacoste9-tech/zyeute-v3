@@ -1,6 +1,6 @@
-# Zyeuté / KryptoTrac - Production-Ready Crypto Tracker
+# Zyeuté - Le Média Social du Québec
 
-> Quebec's premier French social media platform and crypto portfolio tracker with advanced monetization and analytics features
+> La plateforme sociale numéro un au Québec avec monétisation avancée et interactions en temps réel.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-97.6%25-blue)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -16,9 +16,9 @@
 - ✅ **CI/CD Agent** - Automated testing + GitHub Actions
 - 📋 **Triage Agent** - Issue organization + prioritization
 
-**Quick Start:** [AGENT_QUICK_START.md](AGENT_QUICK_START.md) *(3 steps, 5 minutes)*  
-**Full Guide:** [COPILOT_AGENT_GUIDE.md](COPILOT_AGENT_GUIDE.md) *(Complete documentation)*  
-**Project Plan:** [AUDIT_MASTER_TRACKER.md](AUDIT_MASTER_TRACKER.md) *(48-hour recovery plan)*
+**Quick Start:** [AGENT_QUICK_START.md](AGENT_QUICK_START.md) _(3 steps, 5 minutes)_  
+**Full Guide:** [COPILOT_AGENT_GUIDE.md](COPILOT_AGENT_GUIDE.md) _(Complete documentation)_  
+**Project Plan:** [AUDIT_MASTER_TRACKER.md](AUDIT_MASTER_TRACKER.md) _(48-hour recovery plan)_
 
 **Deploy Agents:** https://github.com/brandonlacoste9-tech/zyeute-v3/issues/new/choose
 
@@ -32,34 +32,40 @@
 ### Completed Deliverables
 
 #### 📋 Documentation
+
 - ✅ **AUTH_AUDIT_LOG.md** - Complete authentication audit with grep scan results
 - ✅ **BUTTON_AUDIT_SKELETON.md** - Phase 2 button component standardization framework
 - ✅ **MEDIA_PLAYBOOK.md** - Comprehensive media handling guide (10+ scenarios)
 
 #### 🔧 CI/CD Infrastructure
+
 - ✅ **lighthouse-ci.yml** - Performance testing workflow with Lighthouse
 - ✅ **test.yml** - Existing test suite validation (maintained)
 
 #### 🧪 Testing Framework
+
 - ✅ **auth.e2e.test.ts** - Authentication flow E2E test scaffolding
-- ✅ **guestMode.e2e.test.ts** - Guest mode E2E test scaffolding  
+- ✅ **guestMode.e2e.test.ts** - Guest mode E2E test scaffolding
 - ✅ **loginFlow.e2e.test.ts** - Complete login flow E2E test scaffolding
 
 ### Key Findings
 
 #### Authentication Status
+
 - **Login Flow:** ✅ Fully migrated to Supabase client-side auth
 - **Guest Mode:** ✅ Working with 24-hour localStorage-based sessions
 - **Legacy Endpoints:** ⚠️ Some `/auth/me` calls still present (Phase 2 cleanup)
 - **Admin Checks:** ⚠️ Uses Express session instead of Supabase metadata (Phase 2)
 
 #### Security Assessment
+
 - ✅ Modern Supabase authentication
 - ✅ OAuth support (Google)
 - ✅ Session persistence
 - ⚠️ Mixed auth systems (Supabase + Express sessions)
 
 ### Next Steps (Phase 2)
+
 1. Migrate admin checks to Supabase user metadata
 2. Fix `useAuth` hook to use Supabase auth state
 3. Remove legacy `/auth/me` endpoint dependencies
@@ -72,12 +78,12 @@
 
 ## 📱 Overview
 
-Zyeuté/KryptoTrac is a comprehensive social media and cryptocurrency tracking application built specifically for Quebec's French-speaking market. It features real-time interactions, portfolio and transaction management, advanced price alerts, Stripe payment integration, and a modern, responsive UI built with React and TypeScript.
-
+Zyeuté is a comprehensive social media application built specifically for Quebec's French-speaking market. It features real-time interactions, virtual gifts, monetization, Stripe payment integration, and a modern, responsive UI built with React and TypeScript.
 
 ## ✨ Features
 
 ### Core Functionality
+
 - 🔐 **User Authentication** - Secure registration and login system
 - 📝 **Real-time Feed** - Post and view content with live updates
 - ❤️ **Social Interactions** - Like posts and engage with content
@@ -87,12 +93,11 @@ Zyeuté/KryptoTrac is a comprehensive social media and cryptocurrency tracking a
 - 🎨 **Premium UI** - Beautiful gradient designs and animations
 - 📱 **Responsive Design** - Works seamlessly on all devices
 - 🇫🇷 **French Interface** - Built for Quebec's Francophone community
-- 📊 **Portfolio Tracking** - Track cryptocurrency holdings, performance, and analytics
-- 🧾 **Transaction History** - Log, import, and export all trades and transfers
-- 🚨 **Price Alerts** - Multi-channel notifications (email, in-app, push)
+
 - 🛡️ **Sentry Monitoring** - Real-time error and performance monitoring
 
 ### Advanced Features
+
 - 🎬 **Video Player** - Custom video playback with controls
 - 📧 **Email Integration** - Resend email notifications
 - 🎉 **Festive Animations** - Celebration effects for successful interactions
@@ -103,6 +108,7 @@ Zyeuté/KryptoTrac is a comprehensive social media and cryptocurrency tracking a
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Framework:** React 18 with TypeScript
 - **Build Tool:** Vite
 - **Styling:** Custom CSS with Tailwind CSS utilities
@@ -111,6 +117,7 @@ Zyeuté/KryptoTrac is a comprehensive social media and cryptocurrency tracking a
 - **Icons:** Lucide React
 
 ### Backend
+
 - **Runtime:** Node.js
 - **Framework:** Express.js
 - **Real-time:** Socket.IO
@@ -120,6 +127,7 @@ Zyeuté/KryptoTrac is a comprehensive social media and cryptocurrency tracking a
 - **Database:** Production-ready connection (Supabase/PostgreSQL)
 
 ### DevOps
+
 - **Deployment:** Fly.io
 - **Version Control:** Git/GitHub
 - **Package Manager:** npm
@@ -153,6 +161,7 @@ Package-Installer/
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js 18+ installed
 - npm or yarn package manager
 - Stripe account (for payment features)
@@ -161,12 +170,14 @@ Package-Installer/
 ### Installation
 
 1. **Clone the repository**
+
 ```bash
 git clone https://github.com/Northern-ventures1/Package-Installer.git
 cd Package-Installer
 ```
 
 2. **Install dependencies**
+
 ```bash
 npm install
 ```
@@ -174,6 +185,7 @@ npm install
 3. **Set up environment variables**
 
 Create a `.env` file in the root directory:
+
 ```bash
 PORT=3000
 STRIPE_SECRET_KEY=your_stripe_secret_key
@@ -184,20 +196,22 @@ SESSION_SECRET=your_session_secret
 ```
 
 4. **Run the development server**
+
 ```bash
 npm run dev
 ```
 
 5. **Open your browser**
-Navigate to `http://localhost:3000`
+   Navigate to `http://localhost:3000`
 
-4. The app will automatically install dependencies and start
+6. The app will automatically install dependencies and start
 
 ## 🧪 Testing & Evaluation
 
 Zyeuté V3 includes a comprehensive evaluation framework for testing services, AI agents, and components:
 
 ### Running Tests
+
 ```bash
 # Run all tests once
 npm test
@@ -219,6 +233,7 @@ npm run test:coverage
 ```
 
 ### Test Suite
+
 - **118 Total Tests** across 8 test files
 - **Unit Tests** - Authentication, validation, utilities (58 tests)
 - **Integration Tests** - User flows and API integration (11 tests)
@@ -226,13 +241,16 @@ npm run test:coverage
 - **Coverage Target** - 80%+ code coverage
 
 ### Framework Features
+
 - **Testing Infrastructure** - Vitest + React Testing Library
 - **Evaluation System** - Automated service evaluation with metrics
 - **Tracing System** - Distributed tracing for debugging and monitoring
 - **Performance Monitoring** - Track latency, throughput, and statistics
 
 ### Documentation
+
 See [EVALUATION_FRAMEWORK.md](./EVALUATION_FRAMEWORK.md) for complete documentation on:
+
 - Writing tests for components and services
 - Evaluating AI agents and APIs
 - Using tracing and performance monitoring
@@ -243,6 +261,7 @@ See [EVALUATION_FRAMEWORK.md](./EVALUATION_FRAMEWORK.md) for complete documentat
 Zyeuté V3 includes automated testing and deployment workflows powered by GitHub Actions:
 
 ### Workflows
+
 - **✅ Test Suite** - Runs on every PR and push, includes:
   - TypeScript type checking
   - Unit and integration tests
@@ -265,14 +284,18 @@ Zyeuté V3 includes automated testing and deployment workflows powered by GitHub
   - Slack notifications (optional)
 
 ### Setup
+
 See [CI_CD_SETUP.md](./CI_CD_SETUP.md) for complete documentation on:
+
 - Configuring GitHub secrets
 - Setting up branch protection rules
 - Workflow customization
 - Troubleshooting guide
 
 ### Status Badges
+
 Add these to your repository for visibility:
+
 ```markdown
 [![Tests](https://github.com/brandonlacoste9-tech/zyeute-v3/actions/workflows/test.yml/badge.svg)](https://github.com/brandonlacoste9-tech/zyeute-v3/actions/workflows/test.yml)
 [![Security](https://github.com/brandonlacoste9-tech/zyeute-v3/actions/workflows/security.yml/badge.svg)](https://github.com/brandonlacoste9-tech/zyeute-v3/actions/workflows/security.yml)
@@ -330,7 +353,6 @@ Zyeuté V3 maintains comprehensive quality assurance documentation and testing p
   - Automated coverage reports on PRs
   - Type checking with TypeScript
   - Build verification
-  
 - **[.github/workflows/lighthouse.yml](./.github/workflows/lighthouse.yml)** - Performance & accessibility CI
   - Lighthouse CI for critical routes
   - Performance score ≥90
@@ -378,6 +400,7 @@ When contributing to the project:
 ## 🎮 Usage
 
 ### For Users
+
 1. **Register** - Create an account with email and password
 2. **Login** - Access your personalized feed
 3. **Post** - Share your thoughts and updates
@@ -385,6 +408,7 @@ When contributing to the project:
 5. **Send Gifts** - Support creators with virtual gifts
 
 ### For Creators
+
 1. **Create Content** - Post engaging content for your audience
 2. **Receive Gifts** - Earn through virtual gift monetization
 3. **Track Earnings** - Monitor your creator revenue
@@ -404,6 +428,7 @@ The app uses Stripe for secure payment processing:
 ## 📧 Email System
 
 Email notifications powered by Resend:
+
 - Welcome emails
 - Gift notifications
 - Account updates
@@ -421,21 +446,25 @@ Email notifications powered by Resend:
 ## 🌐 API Endpoints
 
 ### Authentication
+
 - `POST /api/register` - Create new account
 - `POST /api/login` - User login
 - `GET /api/logout` - User logout
 
 ### Posts
+
 - `GET /api/posts` - Get all posts
 - `POST /api/posts` - Create new post
 - `POST /api/posts/:id/like` - Like a post
 
 ### Gifts
+
 - `GET /api/gifts` - Get available gifts
 - `POST /api/gifts/send` - Send gift to creator
 - `GET /api/gifts/received` - Get received gifts
 
 ### Payments
+
 - `POST /api/stripe/create-payment-intent` - Initialize payment
 - `POST /api/stripe/webhook` - Handle Stripe webhooks
 
@@ -451,12 +480,14 @@ The app is highly customizable:
 ## 🚦 Environment Configuration
 
 ### Development
+
 ```bash
 NODE_ENV=development
 PORT=3000
 ```
 
 ### Production
+
 ```bash
 NODE_ENV=production
 PORT=80
@@ -501,6 +532,7 @@ View the [Project Board](../../projects) to see what we're working on.
 We'd love your contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to get started.
 
 **Quick start**:
+
 1. Fork the repository
 2. Create a feature branch
    ```bash
