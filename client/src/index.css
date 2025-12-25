@@ -59,6 +59,10 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
   body {
     @apply text-white;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;

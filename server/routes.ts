@@ -19,7 +19,7 @@ import { verifyAuthToken } from "./supabase-auth.js";
 import debugRoutes from "./api/debug.js";
 // Import tracing utilities
 import { traced, traceDatabase, traceExternalAPI, traceStripe, traceSupabase, addSpanAttributes } from "./tracer.js";
-import { processQuery } from "../utils/tiguy-patterns.js";
+import { processQuery } from './utils/tiguy-patterns';
 import { getVideoQueue } from './queue.js';
 
 // Configure FAL client

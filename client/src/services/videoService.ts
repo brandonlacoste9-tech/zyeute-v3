@@ -33,27 +33,19 @@ export async function processVideo(
   file: File,
   options: VideoEditOptions = {}
 ): Promise<VideoProcessResult> {
-  // Simulate processing time
-  await new Promise(resolve => setTimeout(resolve, 2000));
-
+  // Processing removed for MVP speed - direct passthrough
+  
   // Create object URL for preview
   const url = URL.createObjectURL(file);
 
-  // Mock result
+  // Passthrough result
   const result: VideoProcessResult = {
     url,
     duration: 30, // Mock duration
     thumbnail: url,
-    captions: options.addCaptions ? [
-      'Bienvenue sur Zyeuté! 🔥',
-      'Le meilleur contenu québécois',
-      'Abonne-toi! ⚜️'
-    ] : undefined,
-    highlights: options.removeDeadAir ? [
-      { start: 0, end: 5 },
-      { start: 10, end: 15 },
-      { start: 20, end: 30 }
-    ] : undefined,
+    // Return empty optimizations to prevent false positives in UI
+    captions: undefined,
+    highlights: undefined,
   };
 
   return result;
@@ -64,10 +56,7 @@ export async function processVideo(
  * Uses Gemini for speech-to-text (mock for now)
  */
 export async function generateCaptions(file: File | string): Promise<string[]> {
-  // Simulate AI processing
-  await new Promise(resolve => setTimeout(resolve, 1500));
-
-  // Mock captions
+  // Immediate return
   return [
     'Salut tout le monde!',
     'C\'est malade ce contenu!',
@@ -80,10 +69,7 @@ export async function generateCaptions(file: File | string): Promise<string[]> {
  * Smart trim - Remove dead air and boring parts
  */
 export async function smartTrim(file: File | string): Promise<{ start: number; end: number }[]> {
-  // Simulate AI analysis
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-  // Mock highlights (in seconds)
+  // Immediate return
   return [
     { start: 0, end: 5 },
     { start: 8, end: 15 },
@@ -99,9 +85,6 @@ export async function addBackgroundMusic(
   videoFile: File,
   musicTrack: 'upbeat' | 'chill' | 'epic' | 'quebec'
 ): Promise<string> {
-  // Mock implementation
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
   videoServiceLogger.debug(`Adding ${musicTrack} music to video...`);
   return URL.createObjectURL(videoFile);
 }
@@ -110,9 +93,6 @@ export async function addBackgroundMusic(
  * Crop video to vertical format (9:16)
  */
 export async function cropToVertical(file: File): Promise<string> {
-  // Mock implementation
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
   return URL.createObjectURL(file);
 }
 

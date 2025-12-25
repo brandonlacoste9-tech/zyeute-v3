@@ -5,7 +5,8 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
-import { FixedSizeList as List, type ListChildComponentProps } from 'react-window';
+// @ts-ignore
+import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
 import { SingleVideoView } from './SingleVideoView';
 import { getExplorePosts, togglePostFire, getCurrentUser } from '@/services/api';
@@ -79,8 +80,26 @@ export const ContinuousFeed: React.FC<ContinuousFeedProps> = ({ className, onVid
             const data = await getExplorePosts(0, 10);
 
             if (data) {
-                const validPosts = data.filter(p => p.user) as Array<Post & { user: User }>;
-                setPosts(validPosts);
+                // Map posts to ensure they all have a user object, providing a fallback if missing
+                const processedPosts = data.map(p => {
+                    if (!p.user) {
+                        return {
+                            ...p,
+                            user: {
+                                id: 'unknown',
+                                username: 'Utilisateur inconnu',
+                                display_name: 'Utilisateur inconnu',
+                                avatar_url: '',
+                                bio: '',
+                                created_at: new Date().toISOString(),
+                                is_verified: false,
+                            } as User
+                        };
+                    }
+                    return p as Post & { user: User };
+                });
+                
+                setPosts(processedPosts);
                 setHasMore(data.length === 10);
                 setPage(0);
             }
@@ -101,8 +120,25 @@ export const ContinuousFeed: React.FC<ContinuousFeedProps> = ({ className, onVid
             const data = await getExplorePosts(nextPage, 10);
 
             if (data && data.length > 0) {
-                const validPosts = data.filter(p => p.user) as Array<Post & { user: User }>;
-                setPosts((prev) => [...prev, ...validPosts]);
+                 const processedPosts = data.map(p => {
+                    if (!p.user) {
+                        return {
+                            ...p,
+                            user: {
+                                id: 'unknown',
+                                username: 'Utilisateur inconnu',
+                                display_name: 'Utilisateur inconnu',
+                                avatar_url: '',
+                                bio: '',
+                                created_at: new Date().toISOString(),
+                                is_verified: false,
+                            } as User
+                        };
+                    }
+                    return p as Post & { user: User };
+                });
+
+                setPosts((prev) => [...prev, ...processedPosts]);
                 setHasMore(data.length === 10);
                 setPage(nextPage);
             } else {

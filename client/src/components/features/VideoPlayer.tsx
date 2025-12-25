@@ -175,6 +175,33 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
+  // Handle potential JSON src for multiple qualities
+  const getVideoSrc = (source: string | undefined) => {
+    if (!source) return '';
+    try {
+      // Check if source is a JSON string containing qualities
+      if (source.trim().startsWith('{')) {
+        const urls = JSON.parse(source);
+        if (urls.high || urls.medium || urls.low) {
+            // Simple adaptive logic: start with medium on mobile, high on desktop
+            // In a real implementation, we could check navigator.connection
+            const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+            
+            if (isMobile) {
+                return urls.medium || urls.low || urls.high || source;
+            } else {
+                return urls.high || urls.medium || urls.low || source;
+            }
+        }
+      }
+    } catch (e) {
+      // Not JSON, use as is
+    }
+    return source;
+  };
+
+  const videoSrc = getVideoSrc(src);
+
   // Update time as video plays
   useEffect(() => {
     const video = videoRef.current;
@@ -263,7 +290,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Video Element */}
       <video
         ref={videoRef}
-        src={src}
+        src={videoSrc}
         poster={poster}
         playsInline
         className="w-full h-full object-cover"

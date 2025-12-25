@@ -10,7 +10,6 @@ interface ColonyContextType {
   requestTiGuyResponse: (message: string, context?: any) => void;
   requestJoualBeeModeration: (content: string) => void;
   broadcastVirtualGift: (gift: any) => void;
-  // subscribeToKryptoAlerts removed
   subscribeToVraieQuebecEvents: (callback: (event: any) => void) => void;
   subscribeToAdGenCampaigns: (callback: (campaign: any) => void) => void;
 }
@@ -73,8 +72,7 @@ export function ColonyProvider({ children }: ColonyProviderProps) {
     requestTiGuyResponse: colonyLink.requestTiGuyResponse.bind(colonyLink),
     requestJoualBeeModeration: colonyLink.requestJoualBeeModeration.bind(colonyLink),
     broadcastVirtualGift: colonyLink.broadcastVirtualGift.bind(colonyLink),
-    // subscribeToKryptoAlerts removed
-    subscribeToVraieQuebecEvents: colonyLink.subscribeToVraieQuebecEvents.bind(colonyLink),
+      subscribeToVraieQuebecEvents: colonyLink.subscribeToVraieQuebecEvents.bind(colonyLink),
     subscribeToAdGenCampaigns: colonyLink.subscribeToAdGenCampaigns.bind(colonyLink),
   };
 

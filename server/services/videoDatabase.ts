@@ -21,9 +21,17 @@ export async function saveVideoUrls(
   }
 ): Promise<void> {
     
+    // Store all qualities as JSON in the mediaUrl column
+    // This allows backward compatibility (string vs json string)
+    const mediaPayload = JSON.stringify({
+        high: urls.videoHighUrl,
+        medium: urls.videoMediumUrl,
+        low: urls.videoLowUrl
+    });
+
     await db.update(posts)
         .set({ 
-            mediaUrl: urls.videoHighUrl,
+            mediaUrl: mediaPayload,
             // Original URL is kept as backup or previously set
             // In future, we can add columns for resolutions if schema migration is possible
             processingStatus: 'completed',
