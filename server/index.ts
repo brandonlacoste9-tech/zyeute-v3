@@ -1,135 +1,161 @@
-import 'dotenv/config'; // Load environment variables from .env
-import 'express-async-errors';
-import express, { type Request, Response, NextFunction } from "express";
-// --- OpenTelemetry Tracing (Disabled temporarily due to version mismatch) ---
-// import '../tracing-setup';
+import "express-async-errors";
+import express from "express";
+import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
-import { serveStatic } from "./static.js";
-import tiGuyRouter from './routes/tiguy.js';
 import { createServer } from "http";
+import { serveStatic } from "./static.js";
 import helmet from "helmet";
-// import { tracingMiddleware, getTraceContext, recordException } from "./tracer.js";
 
+// Create Express app
 const app = express();
 
-// Use Helmet for security headers
-app.use(helmet());
-
-// Trust proxy for proper IP detection behind reverse proxy
+// Trust proxy for Vercel / Reverse Proxies
 app.set("trust proxy", 1);
 
-const httpServer = createServer(app);
+// Use Helmet for security headers
+app.use(helmet({
+    contentSecurityPolicy: false, // Disable CSP for now to avoid breaking scripts/images
+    crossOriginEmbedderPolicy: false
+}));
 
+// Extend IncomingMessage for Stripe raw body
 declare module "http" {
   interface IncomingMessage {
-    rawBody: unknown;
+    rawBody: Buffer;
   }
 }
 
-declare global {
-  namespace Express {
-    interface Request {
-      userId?: string;
-    }
-  }
-}
-
+// JSON parsing with raw body for Stripe webhooks
 app.use(
   express.json({
     verify: (req, _res, buf) => {
-      req.rawBody = buf;
+      (req as any).rawBody = buf;
     },
-  }),
+  })
 );
 
 app.use(express.urlencoded({ extended: false }));
 
-// Add tracing middleware early to capture all requests
-// app.use(tracingMiddleware()); // Disabled - OTel version mismatch
-
-export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-
-  // Include trace context in logs for correlation (disabled)
-  // const traceContext = getTraceContext();
-  // const traceInfo = traceContext.traceId
-  //   ? ` [trace:${traceContext.traceId.substring(0, 8)}]`
-  //   : "";
-
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
+// Basic CORS
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((s) => s.trim())
+  : ["*"];
 
 app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  const origin = req.headers.origin || "*";
 
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
+  const allowOrigin =
+    ALLOWED_ORIGINS.includes("*") || ALLOWED_ORIGINS.includes(origin)
+      ? origin
+      : ALLOWED_ORIGINS[0] || "*";
 
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Origin", allowOrigin);
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+  );
+  res.header(
+    "Access-Control-Allow-Headers",
+    [
+      "X-CSRF-Token",
+      "X-Requested-With",
+      "Accept",
+      "Accept-Version",
+      "Content-Length",
+      "Content-MD5",
+      "Content-Type",
+      "Date",
+      "X-Api-Version",
+      "Authorization",
+    ].join(", ")
+  );
 
-      log(logLine);
-    }
-  });
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
 
   next();
 });
 
-(async () => {
-  app.use('/api/tiguy', tiGuyRouter);
-  await registerRoutes(httpServer, app);
-
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    // Record exception in trace (disabled)
-    // recordException(err, {
-    //   "error.status": status,
-    //   "error.message": message,
-    // });
-
-    res.status(status).json({ message });
+// Request logging for API routes
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    if (!req.path.startsWith("/api")) return;
+    const duration = Date.now() - start;
+    console.log(`${req.method} ${req.path} ${res.statusCode} in ${duration}ms`);
   });
+  next();
+});
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (process.env.NODE_ENV === "production") {
-    serveStatic(app);
-  } else {
-    const { setupVite } = await import("./vite.js");
-    await setupVite(httpServer, app);
+// Create HTTP server (for potential WebSockets, SSE, etc.)
+const httpServer = createServer(app);
+
+let routesInitialized = false;
+const initRoutes = async () => {
+  if (!routesInitialized) {
+    await registerRoutes(httpServer, app);
+    
+    // --- VITE DEV SERVER (Existing Logic Restored) ---
+    // importantly only setup vite in development and after
+    // setting up all the other routes so the catch-all route
+    // doesn't interfere with the other routes
+    if (process.env.NODE_ENV === "production") {
+        serveStatic(app);
+    } else {
+        const { setupVite } = await import("./vite.js");
+        await setupVite(httpServer, app);
+    }
+
+    routesInitialized = true;
+    console.log("Routes initialized");
   }
+};
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0", // Allow external access for browser viewing
-      // reusePort: true, // Linux-only, disabled for Windows
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
-})();
+// Central error handler
+app.use(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (err: any, _req: Request, res: Response, _next: NextFunction) => {
+    console.error("API Error:", err);
+    const status = err.status || err.statusCode || 500;
+    const message =
+      process.env.NODE_ENV === "production"
+        ? err.publicMessage || "Internal Server Error"
+        : err.message || "Internal Server Error";
+
+    res.status(status).json({
+      message,
+      ...(process.env.NODE_ENV !== "production" && {
+        stack: err.stack,
+      }),
+    });
+  }
+);
+
+// Vercel serverless handler export
+export default async function handler(req: any, res: any) {
+  await initRoutes();
+  return app(req, res);
+}
+
+// Local Development Server Start
+if (process.env.NODE_ENV !== 'production' || require.main === module) {
+    (async () => {
+        await initRoutes();
+        const port = parseInt(process.env.PORT || "5000", 10);
+        httpServer.listen({
+            port,
+            host: "0.0.0.0",
+        }, () => {
+            console.log(`serving on port ${port}`);
+        });
+    })();
+}
+
+// Vercel config (disable built-in body parsing)
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};

@@ -16,6 +16,7 @@ import studioRoutes from "./routes/studio.js";
 import enhanceRoutes from "./routes/enhance.js";
 // [NEW] Import the JWT verifier
 import { verifyAuthToken, supabaseAdmin } from "./supabase-auth.js";
+import { stripeWebhookHandler } from "./routes/stripe-webhook.js";
 import debugRoutes from "./api/debug.js";
 // Import tracing utilities
 import { traced, traceDatabase, traceExternalAPI, traceStripe, traceSupabase, addSpanAttributes } from "./tracer.js";
@@ -104,6 +105,9 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  // Stripe webhooks must use the raw body parser (already set globally)
+  app.post("/webhooks/stripe", stripeWebhookHandler);
 
   // ============ HEALTH CHECK ENDPOINT (EXEMPT FROM RATE LIMITING) ============
   // Place BEFORE rate limiter so monitoring/testing works without limits
