@@ -11,7 +11,7 @@ import { GiftModal } from '@/components/features/GiftModal';
 import { GiftOverlay } from '@/components/features/GiftOverlay';
 import { Onboarding, useOnboarding } from '@/components/Onboarding';
 import { getCurrentUser, getStories } from '@/services/api';
-import { ContinuousFeed } from '@/components/features/ContinuousFeed';
+import ZyeuteFeed from '@/components/features/ZyeuteFeed';
 import { PromoBanner } from '@/components/features/PromoBanner';
 import { SuccessModal } from '@/components/features/SuccessModal';
 
@@ -173,7 +173,7 @@ export const Feed: React.FC = () => {
       <div className="flex-1 w-full bg-black relative">
         
 
-        <ContinuousFeed />
+        <ZyeuteFeed />
       </div>
 
       {/* Premium Chat Button - Ti-Guy Bronze Emblem */}

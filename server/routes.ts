@@ -15,7 +15,7 @@ import emailAutomation from "./email-automation.js";
 import studioRoutes from "./routes/studio.js";
 import enhanceRoutes from "./routes/enhance.js";
 // [NEW] Import the JWT verifier
-import { verifyAuthToken } from "./supabase-auth.js";
+import { verifyAuthToken, supabaseAdmin } from "./supabase-auth.js";
 import debugRoutes from "./api/debug.js";
 // Import tracing utilities
 import { traced, traceDatabase, traceExternalAPI, traceStripe, traceSupabase, addSpanAttributes } from "./tracer.js";
@@ -125,6 +125,35 @@ export async function registerRoutes(
 
   // ============ STUDIO AI HIVE ROUTES ============
   app.use("/api/studio", requireAuth, studioRoutes);
+
+  // ============ MEDIA FEED ROUTE ============
+  app.get("/api/feed", optionalAuth, async (req, res) => {
+    try {
+      if (!supabaseAdmin) {
+        console.error("Supabase admin client not initialized");
+        // Fallback or service unavailable
+        return res.status(503).json({ error: "Service unavailable" });
+      }
+
+      // Query 'videos' table: Featured first, then newest
+      const { data, error } = await supabaseAdmin
+        .from('videos')
+        .select('*')
+        .order('is_featured', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error("Supabase error fetching feed:", error);
+        return res.status(500).json({ error: "Failed to fetch feed" });
+      }
+
+      res.json(data);
+    } catch (e) {
+      console.error("Feed API error:", e);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
 
   // ============ DEEP ENHANCE ROUTES ============
   // enhanceRoutes handles /posts/:id/enhance, mounted at /api so it becomes /api/posts/:id/enhance
