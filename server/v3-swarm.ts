@@ -8,8 +8,13 @@
  * - Moderation loop with max 3 attempts and fallback content
  */
 
+import { traceExternalAPI } from './tracer.js';
+
 // OpenAI SDK removed in favor of native fetch to avoid "Missing credentials" errors
 // const deepseek = new OpenAI({ ... });
+
+const MAX_RETRIES = 3;
+const MOD_MAX_ATTEMPTS = 3;
 
 // Exponential backoff helper
 async function sleep(ms: number): Promise<void> {
@@ -169,6 +174,74 @@ Based on the interaction history provided, output:
 }`
 };
 
+export const USER_MODERATION_PROMPT = `Tu es un modérateur IA pour Zyeuté, plateforme sociale québécoise.
+
+CONTEXTE CULTUREL QUÉBÉCOIS:
+✅ ACCEPTER:
+- Joual et expressions colorées ("crisse", "tabarnak", "câlisse", "ostie")
+- Humour grinçant et sarcasme québécois
+- Débats politiques passionnés (souveraineté, langue française)
+- Critique sociale constructive
+- Références culturelles locales (Ti-Guy, poutine, etc.)
+- Blagues entre amis et taquineries amicales
+- Expressions comme "malade", "sick", "en feu" (positif)
+
+❌ BLOQUER:
+1. INTIMIDATION:
+   - Attaques personnelles répétées et ciblées
+   - Moqueries sur apparence physique/poids/orientation
+   - Harcèlement persistant
+   - Menaces directes ou voilées
+
+2. DISCOURS HAINEUX:
+   - Racisme, sexisme, homophobie, transphobie
+   - Xénophobie, discrimination religieuse
+   - Suprémacisme blanc ou autre
+   - Négation de génocides
+   - Appels à la violence contre groupes
+
+3. HARCÈLEMENT SEXUEL:
+   - Messages sexuels non sollicités
+   - Commentaires déplacés sur le corps
+   - Demandes inappropriées
+   - Partage d'images intimes sans consentement
+
+4. VIOLENCE:
+   - Menaces de violence physique
+   - Incitation à l'automutilation ou suicide
+   - Glorification de violence ou terrorisme
+   - Instructions pour armes/explosifs
+
+5. CONTENU ILLÉGAL:
+   - Exploitation de mineurs (TOLÉRANCE ZÉRO)
+   - Vente de drogues illégales
+   - Activités criminelles
+   - Contenu piraté ou volé
+
+6. SPAM:
+   - Liens malveillants répétés
+   - Publicité excessive non sollicitée
+   - Chaînes de lettres
+   - Comportement de bot
+
+NIVEAUX DE SÉVÉRITÉ:
+- safe: Contenu OK, aucune action requise
+- low: Borderline, flag pour révision humaine mais publier
+- medium: Problématique, cacher du trending, révision nécessaire
+- high: Violation claire, supprimer + avertissement utilisateur
+- critical: Violation grave, supprimer + ban temporaire/permanent
+
+RÉPONSE (JSON STRICT, AUCUN TEXTE AVANT OU APRÈS):
+{
+  "is_safe": boolean,
+  "severity": "safe" | "low" | "medium" | "high" | "critical",
+  "categories": ["bullying", "hate_speech", "harassment", "violence", "spam", "nsfw", "illegal", "self_harm"],
+  "confidence": 0-100,
+  "reason": "Explication claire en français du Québec",
+  "action": "allow" | "flag" | "hide" | "remove" | "ban",
+  "context_note": "Note sur le contexte culturel québécois si pertinent"
+}`;
+
 // ============ V3 CLIENT INTERFACES ============
 
 export interface V3CoreAction {
@@ -201,6 +274,20 @@ export interface V3MemSnapshot {
     suggested_content_types: string[];
     suggested_tone: string;
   };
+}
+
+export type ModerationSeverity = 'safe' | 'low' | 'medium' | 'high' | 'critical';
+export type ModerationAction = 'allow' | 'flag' | 'hide' | 'remove' | 'ban';
+export type ModerationCategory = 'bullying' | 'hate_speech' | 'harassment' | 'violence' | 'spam' | 'nsfw' | 'illegal' | 'self_harm';
+
+export interface V3UserModerationResult {
+  is_safe: boolean;
+  severity: ModerationSeverity;
+  categories: ModerationCategory[];
+  confidence: number;
+  reason: string;
+  action: ModerationAction;
+  context_note?: string;
 }
 
 // Safe fallback content for when moderation fails repeatedly
@@ -241,7 +328,7 @@ async function callV3(systemPrompt: string, userMessage: string, parseJson = tru
   }
 
   // Use retry wrapper for resilience
-  return traceExternalAPI("deepseek", "chat.completions", "POST", async (span) => {
+  return traceExternalAPI("deepseek", "chat.completions", "POST", async (span: any) => {
     span.setAttributes({
       "ai.model": "deepseek-chat",
       "ai.system_prompt_length": systemPrompt.length,
@@ -399,6 +486,13 @@ export async function v3Mem(interactionHistory: string[]): Promise<V3MemSnapshot
   });
   const result = await callV3(V3_PROMPTS.MEM, message) as Record<string, unknown>;
   return result as unknown as V3MemSnapshot;
+}
+
+// V3-USER-MOD: Detailed User Content Moderation
+export async function v3ModerateUserContent(text: string): Promise<V3UserModerationResult> {
+  const message = `TEXTE: "${text}"`;
+  const result = await callV3(USER_MODERATION_PROMPT, message) as Record<string, unknown>;
+  return result as unknown as V3UserModerationResult;
 }
 
 // ============ FAL PRESETS ============

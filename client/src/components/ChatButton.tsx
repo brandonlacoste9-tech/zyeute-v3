@@ -5,6 +5,8 @@
  */
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { useHaptics } from '@/hooks/useHaptics';
 import { ChatModal } from './ChatModal';
 import { cn } from '@/lib/utils';
@@ -30,6 +32,8 @@ export const ChatButton: React.FC<ChatButtonProps> = ({
   size = 'md',
 }) => {
   const { impact } = useHaptics();
+  const { isGuest } = useAuth();
+  const navigate = useNavigate();
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
 
@@ -51,6 +55,12 @@ export const ChatButton: React.FC<ChatButtonProps> = ({
 
   const handleClick = () => {
     impact();
+    
+    if (isGuest) {
+      navigate('/login');
+      return;
+    }
+
     setIsChatOpen(true);
     if (onClick) {
       onClick();

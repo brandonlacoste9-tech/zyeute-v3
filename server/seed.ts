@@ -1,58 +1,69 @@
 /**
  * Seed script to populate the database with sample data
+ * OPERATION GHOST TOWN: Populating feed for Launch Social Proof
  */
 import { db } from './storage.js';
-import { users, posts, follows, stories } from '../shared/schema.js';
+import { users, posts, follows, stories, comments } from '../shared/schema.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { sql } from 'drizzle-orm';
 
 async function seed() {
-  console.log('🌱 Seeding database...');
+  console.log('🌱 Seeding database for VIP Launch (Operation Ghost Town)...');
   
   try {
-    // Create demo users
+    // CLEANUP: Reset DB to ensure fresh "Launch Day" state
+    console.log('🧹 Cleaning up old data...');
+    // Delete in order to avoid foreign key constraints
+    await db.delete(comments);
+    await db.delete(stories);
+    await db.delete(follows);
+    await db.delete(posts);
+    await db.delete(users);
+
     const hashedPassword = await bcrypt.hash('demo123', 10);
     
+    // 1. CREATE USERS (The Squad)
     const demoUsers = [
       {
         id: crypto.randomUUID(),
-        username: 'ti_guy',
-        email: 'tiguy@zyeute.qc.ca',
-        displayName: 'Ti-Guy Tremblay',
-        bio: 'Fier Québécois, amant du plein air et de la poutine!',
-        avatarUrl: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=400',
+        username: 'team_zyeute',
+        email: 'team@zyeute.qc.ca',
+        displayName: "L'Équipe Zyeuté",
+        bio: 'Compte officiel de Zyeuté. On surveille tout! 👀',
+        avatarUrl: 'https://images.unsplash.com/photo-1579547621869-0ddb29f36e11?w=400',
         region: 'montreal' as const,
         isVerified: true,
       },
       {
         id: crypto.randomUUID(),
-        username: 'marie_quebec',
-        email: 'marie@laval.qc.ca',
-        displayName: 'Marie-Soleil Gagnon',
-        bio: 'Exploratrice urbaine à Montréal 🌆 Passionnée de photo.',
-        avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
+        username: 'julie_mtl',
+        email: 'julie@zyeute.qc.ca',
+        displayName: 'Julie Coté',
+        bio: 'Maman de 2 tannants. Fan de vin et de déco. 🍷✨',
+        avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
         region: 'montreal' as const,
-        isVerified: true,
+        isVerified: false,
       },
       {
         id: crypto.randomUUID(),
-        username: 'jase_laval',
-        email: 'jason@quebec.qc.ca',
-        displayName: 'Jason Bolduc',
-        bio: 'Gars de char et de hockey 🏎️🏒 Nordiques forever!',
+        username: 'patrice_outdoors',
+        email: 'patrice@zyeute.qc.ca',
+        displayName: 'Patrice Lemieux',
+        bio: 'Chasse, pêche, chalet. Le bois c\'est la vie. 🌲🦌',
         avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
         region: 'quebec' as const,
         isVerified: false,
       },
       {
         id: crypto.randomUUID(),
-        username: 'oceane_gaspe',
-        email: 'oceane@gaspe.qc.ca',
-        displayName: 'Océane Fournier',
-        bio: 'Amoureuse du fleuve et du vent de la Gaspésie 🌊',
-        avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
-        region: 'gaspesie' as const,
-        isVerified: true,
+        username: 'catlover_qc',
+        email: 'cats@zyeute.qc.ca',
+        displayName: 'Sophie & Moustache',
+        bio: 'Mes chats sont mes patrons. 🐱🐈‍⬛',
+        avatarUrl: 'https://images.unsplash.com/photo-1517849845537-4d257902454a?w=400',
+        region: 'laval' as const,
+        isVerified: false,
       },
       {
         id: crypto.randomUUID(),
@@ -65,383 +76,161 @@ async function seed() {
         region: 'montreal' as const,
         isVerified: false,
       },
-      {
-        id: crypto.randomUUID(),
-        username: 'team_zyeute',
-        email: 'team@zyeute.qc.ca',
-        displayName: "L'Équipe Zyeuté",
-        bio: 'Compte officiel de Zyeuté. On surveille tout! 👀',
-        avatarUrl: 'https://images.unsplash.com/photo-1579547621869-0ddb29f36e11?w=400',
-        region: 'montreal' as const,
-        isVerified: true,
-      },
     ];
     
     const createdUsers = await db.insert(users).values(demoUsers).returning();
-    console.log(`✅ Created ${createdUsers.length} users`);
+    console.log(`✅ Created ${createdUsers.length} users (The Squad is here)`);
     
-    // Create sample posts - 25+ Quebec-themed posts for rich content
+    const teamUser = createdUsers.find(u => u.username === 'team_zyeute')!;
+    const julie = createdUsers.find(u => u.username === 'julie_mtl')!;
+    const patrice = createdUsers.find(u => u.username === 'patrice_outdoors')!;
+    const sophie = createdUsers.find(u => u.username === 'catlover_qc')!;
+
+    // 2. CREATE POSTS (Content Fill)
+    // We explicitly set createdAt to ensure order. Launch post is NEWEST.
+    
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    const twoHoursAgo = new Date(now.getTime() - 120 * 60 * 1000);
+    const threeHoursAgo = new Date(now.getTime() - 180 * 60 * 1000);
+
     const samplePosts = [
+      // THE LAUNCH POST (Top of feed)
       {
         id: crypto.randomUUID(),
-        userId: createdUsers[createdUsers.length - 1].id, // Last user is team_zyeute
+        userId: teamUser.id,
         type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1549603091-a621c9777f99?w=800', // Fireworks / Celebration
-        content: "🚨 ALERTE LANCEMENT! On donne 3 mois VIP aux 100 premiers! Taggue un ami qui a besoin de voir ça! 👇 #Zyeute #Quebec",
-        caption: "🚨 ALERTE LANCEMENT! On donne 3 mois VIP aux 100 premiers! Taggue un ami qui a besoin de voir ça! 👇 #Zyeute #Quebec",
+        mediaUrl: 'https://images.unsplash.com/photo-1549603091-a621c9777f99?w=800', // Fireworks
+        content: "🚨 ALERTE LANCEMENT! On donne 3 mois VIP aux 100 premiers! Taggue un ami qui a besoin de voir ça! 👇 #Zyeute #Quebec #VIP",
+        caption: "🚨 ALERTE LANCEMENT! On donne 3 mois VIP aux 100 premiers! Taggue un ami qui a besoin de voir ça! 👇 #Zyeute #Quebec #VIP",
         hashtags: ['Zyeute', 'Quebec', 'Lancement'],
         region: 'montreal' as const,
         visibility: 'public' as const,
         fireCount: 842,
+        createdAt: now,
       },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[0].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1519181245277-cffeb31da2e3?w=800',
-        content: 'Bienvenue sur Zyeuté! L\'app sociale du Québec 🔥⚜️ Rejoins la communauté!',
-        caption: 'Bienvenue sur Zyeuté! L\'app sociale du Québec 🔥⚜️ Rejoins la communauté!',
-        hashtags: ['zyeute', 'quebec', 'bienvenue'],
-        region: 'montreal' as const,
-        visibility: 'public' as const,
-        fireCount: 156,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[1].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800',
-        content: 'Le vieux port de Montréal au coucher du soleil 🌅 C\'est tellement beau!',
-        caption: 'Le vieux port de Montréal au coucher du soleil 🌅 C\'est tellement beau!',
-        hashtags: ['montreal', 'vieuxport', 'sunset'],
-        region: 'montreal' as const,
-        visibility: 'public' as const,
-        fireCount: 89,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[2].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1534430480872-3498386e7856?w=800',
-        content: 'Le Château Frontenac, toujours aussi majestueux! 🏰 #patrimoine',
-        caption: 'Le Château Frontenac, toujours aussi majestueux! 🏰 #patrimoine',
-        hashtags: ['quebec', 'frontenac', 'histoire'],
-        region: 'quebec' as const,
-        visibility: 'public' as const,
-        fireCount: 234,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[3].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
-        content: 'Le rocher Percé au lever du soleil 🌄 Un vrai bijou de la Gaspésie!',
-        caption: 'Le rocher Percé au lever du soleil 🌄 Un vrai bijou de la Gaspésie!',
-        hashtags: ['gaspesie', 'perce', 'nature'],
-        region: 'gaspesie' as const,
-        visibility: 'public' as const,
-        fireCount: 312,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[1].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=800',
-        content: 'Randonnée au Mont-Royal avec une vue incroyable! 🏔️',
-        caption: 'Randonnée au Mont-Royal avec une vue incroyable! 🏔️',
-        hashtags: ['montreal', 'montroyal', 'hiking'],
-        region: 'montreal' as const,
-        visibility: 'public' as const,
-        fireCount: 67,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[0].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800',
-        content: 'Une bonne poutine pour commencer la journée! 🍟🧀 Miam!',
-        caption: 'Une bonne poutine pour commencer la journée! 🍟🧀 Miam!',
-        hashtags: ['poutine', 'quebec', 'foodie'],
-        region: 'montreal' as const,
-        visibility: 'public' as const,
-        fireCount: 445,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[2].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800',
-        content: 'Les lumières de la ville de Québec la nuit ✨ Magique!',
-        caption: 'Les lumières de la ville de Québec la nuit ✨ Magique!',
-        hashtags: ['quebec', 'nightlife', 'cityscape'],
-        region: 'quebec' as const,
-        visibility: 'public' as const,
-        fireCount: 178,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[3].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800',
-        content: 'La forêt boréale en automne 🍂 Les couleurs sont folles cette année!',
-        caption: 'La forêt boréale en automne 🍂 Les couleurs sont folles cette année!',
-        hashtags: ['automne', 'nature', 'quebec'],
-        region: 'gaspesie' as const,
-        visibility: 'public' as const,
-        fireCount: 523,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[1].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800',
-        content: 'Vue sur le centre-ville depuis le belvédère 🌆',
-        caption: 'Vue sur le centre-ville depuis le belvédère 🌆',
-        hashtags: ['montreal', 'skyline', 'view'],
-        region: 'montreal' as const,
-        visibility: 'public' as const,
-        fireCount: 134,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[0].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
-        content: 'Brunch du dimanche dans le Plateau! ☕🥐',
-        caption: 'Brunch du dimanche dans le Plateau! ☕🥐',
-        hashtags: ['brunch', 'plateau', 'montreal'],
-        region: 'montreal' as const,
-        visibility: 'public' as const,
-        fireCount: 289,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[2].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800',
-        content: 'Le fleuve St-Laurent au petit matin 🌊 Tellement paisible',
-        caption: 'Le fleuve St-Laurent au petit matin 🌊 Tellement paisible',
-        hashtags: ['stlaurent', 'fleuve', 'quebec'],
-        region: 'quebec' as const,
-        visibility: 'public' as const,
-        fireCount: 201,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[3].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800',
-        content: 'Les Chic-Chocs en hiver ❄️🏔️ Le paradis du ski!',
-        caption: 'Les Chic-Chocs en hiver ❄️🏔️ Le paradis du ski!',
-        hashtags: ['chicchocs', 'ski', 'hiver'],
-        region: 'gaspesie' as const,
-        visibility: 'public' as const,
-        fireCount: 387,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[1].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1533929736458-ca588d08c8be?w=800',
-        content: 'Street art dans le Mile End 🎨 Montréal a tellement de talent!',
-        caption: 'Street art dans le Mile End 🎨 Montréal a tellement de talent!',
-        hashtags: ['streetart', 'mileend', 'art'],
-        region: 'montreal' as const,
-        visibility: 'public' as const,
-        fireCount: 156,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[0].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800',
-        content: 'Souper gastronomique québécois 🍽️ Du terroir dans l\'assiette!',
-        caption: 'Souper gastronomique québécois 🍽️ Du terroir dans l\'assiette!',
-        hashtags: ['gastronomie', 'terroir', 'quebec'],
-        region: 'montreal' as const,
-        visibility: 'public' as const,
-        fireCount: 267,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[2].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800',
-        content: 'Week-end au spa dans les Laurentides 💆‍♀️ On mérite ça!',
-        caption: 'Week-end au spa dans les Laurentides 💆‍♀️ On mérite ça!',
-        hashtags: ['spa', 'laurentides', 'relaxation'],
-        region: 'laval' as const,
-        visibility: 'public' as const,
-        fireCount: 198,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[3].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800',
-        content: 'Observation des baleines à Tadoussac 🐋 Incroyable!',
-        caption: 'Observation des baleines à Tadoussac 🐋 Incroyable!',
-        hashtags: ['baleines', 'tadoussac', 'nature'],
-        region: 'gaspesie' as const,
-        visibility: 'public' as const,
-        fireCount: 612,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[1].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800',
-        content: 'Festival de Jazz 🎷🎺 L\'ambiance est malade!',
-        caption: 'Festival de Jazz 🎷🎺 L\'ambiance est malade!',
-        hashtags: ['jazz', 'festival', 'montreal'],
-        region: 'montreal' as const,
-        visibility: 'public' as const,
-        fireCount: 445,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[0].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=800',
-        content: 'Cabane à sucre! 🍁 Le temps des sucres c\'est le meilleur temps!',
-        caption: 'Cabane à sucre! 🍁 Le temps des sucres c\'est le meilleur temps!',
-        hashtags: ['cabane', 'siroperable', 'tradition'],
-        region: 'montreal' as const,
-        visibility: 'public' as const,
-        fireCount: 534,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[2].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1490730141103-6cac27abb37f?w=800',
-        content: 'Hockey au Centre Bell 🏒🔥 Go Habs Go!',
-        caption: 'Hockey au Centre Bell 🏒🔥 Go Habs Go!',
-        hashtags: ['hockey', 'habs', 'centrebell'],
-        region: 'montreal' as const,
-        visibility: 'public' as const,
-        fireCount: 723,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[3].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800',
-        content: 'Kayak sur le Saguenay 🛶 La nature sauvage du Québec!',
-        caption: 'Kayak sur le Saguenay 🛶 La nature sauvage du Québec!',
-        hashtags: ['kayak', 'saguenay', 'aventure'],
-        region: 'quebec' as const,
-        visibility: 'public' as const,
-        fireCount: 356,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[1].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1485872299829-c673f5194813?w=800',
-        content: 'La Fête Nationale! 🎆⚜️ Bonne St-Jean à tous!',
-        caption: 'La Fête Nationale! 🎆⚜️ Bonne St-Jean à tous!',
-        hashtags: ['stjean', 'fetenationale', 'quebec'],
-        region: 'montreal' as const,
-        visibility: 'public' as const,
-        fireCount: 892,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[0].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800',
-        content: 'Route panoramique en Charlevoix 🚗 Chaque virage est une carte postale!',
-        caption: 'Route panoramique en Charlevoix 🚗 Chaque virage est une carte postale!',
-        hashtags: ['charlevoix', 'roadtrip', 'paysage'],
-        region: 'quebec' as const,
-        visibility: 'public' as const,
-        fireCount: 278,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[2].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800',
-        content: 'Coworking à Montréal 💻 La scène tech québécoise est en feu!',
-        caption: 'Coworking à Montréal 💻 La scène tech québécoise est en feu!',
-        hashtags: ['tech', 'startup', 'montreal'],
-        region: 'montreal' as const,
-        visibility: 'public' as const,
-        fireCount: 145,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[3].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1516912481808-3406841bd33c?w=800',
-        content: 'Tempête de neige à Québec ❄️ On est faits forts icitte!',
-        caption: 'Tempête de neige à Québec ❄️ On est faits forts icitte!',
-        hashtags: ['hiver', 'neige', 'quebec'],
-        region: 'quebec' as const,
-        visibility: 'public' as const,
-        fireCount: 234,
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: createdUsers[1].id,
-        type: 'photo',
-        mediaUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800',
-        content: 'Portrait dans le Vieux-Montréal 📸 Cette lumière!',
-        caption: 'Portrait dans le Vieux-Montréal 📸 Cette lumière!',
-        hashtags: ['portrait', 'vieuxmontreal', 'photo'],
-        region: 'montreal' as const,
-        visibility: 'public' as const,
-        fireCount: 189,
-      },
-    ];
-    
-    const createdPosts = await db.insert(posts).values(samplePosts).returning();
-    console.log(`✅ Created ${createdPosts.length} posts`);
-    
-    // Create some follows (demo user follows everyone)
-    const demoUser = createdUsers.find(u => u.username === 'demo');
-    if (demoUser) {
-      const followData = createdUsers
-        .filter(u => u.id !== demoUser.id)
-        .map(u => ({
-          followerId: demoUser.id,
-          followingId: u.id,
-        }));
       
-      await db.insert(follows).values(followData);
-      console.log(`✅ Created ${followData.length} follow relationships`);
-    }
-    
-    // Create sample stories
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
-    
-    const sampleStories = [
+      // JULIE'S POSTS
       {
-        userId: createdUsers[0].id,
-        mediaUrl: 'https://images.unsplash.com/photo-1519181245277-cffeb31da2e3?w=800',
-        mediaType: 'photo',
-        caption: 'Nouvelle journée sur Zyeuté!',
-        expiresAt,
+        id: crypto.randomUUID(),
+        userId: julie.id,
+        type: 'photo',
+        mediaUrl: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=800', // Wine
+        content: "Petit verre de rouge pour fêter le réveillon! 🍷 Joyeux Noël tout le monde! #vino #noel",
+        caption: "Petit verre de rouge pour fêter le réveillon! 🍷 Joyeux Noël tout le monde! #vino #noel",
+        region: 'montreal' as const,
+        fireCount: 45,
+        createdAt: oneHourAgo,
       },
       {
-        userId: createdUsers[1].id,
-        mediaUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800',
-        mediaType: 'photo',
-        caption: 'Belle vue ce matin!',
-        expiresAt,
+        id: crypto.randomUUID(),
+        userId: julie.id,
+        type: 'photo',
+        mediaUrl: 'https://images.unsplash.com/photo-1544965850-6f8a627a8c8f?w=800', // Decor
+        content: "Ma table est prête! 🎄✨ J'espère que vous passez du bon temps en famille.",
+        caption: "Ma table est prête! 🎄✨ J'espère que vous passez du bon temps en famille.",
+        region: 'montreal' as const,
+        fireCount: 32,
+        createdAt: threeHoursAgo,
       },
+
+      // PATRICE'S POSTS
+      {
+        id: crypto.randomUUID(),
+        userId: patrice.id,
+        type: 'photo',
+        mediaUrl: 'https://images.unsplash.com/photo-1517175956041-3315629c1d09?w=800', // Winter walk
+        content: "Petite marche digestive dans le clos. Y fait frette mais c'est beau! ❄️🚶‍♂️",
+        caption: "Petite marche digestive dans le clos. Y fait frette mais c'est beau! ❄️🚶‍♂️",
+        region: 'quebec' as const,
+        fireCount: 67,
+        createdAt: oneHourAgo,
+      },
+      {
+        id: crypto.randomUUID(),
+        userId: patrice.id,
+        type: 'photo',
+        mediaUrl: 'https://images.unsplash.com/photo-1518737003272-da77977784e7?w=800', // Dog in snow
+        content: "Rocky aime la neige plus que moi je pense 😂🐶",
+        caption: "Rocky aime la neige plus que moi je pense 😂🐶",
+        region: 'quebec' as const,
+        fireCount: 124,
+        createdAt: twoHoursAgo,
+      },
+
+      // SOPHIE'S POSTS
+      {
+        id: crypto.randomUUID(),
+        userId: sophie.id,
+        type: 'photo',
+        mediaUrl: 'https://images.unsplash.com/photo-1577215933066-886915f7957e?w=800', // Cat in tree
+        content: "Moustache a encore essayé de grimper dans le sapin... 🤦‍♀️😼 #NoelDesChats",
+        caption: "Moustache a encore essayé de grimper dans le sapin... 🤦‍♀️😼 #NoelDesChats",
+        region: 'laval' as const,
+        fireCount: 89,
+        createdAt: oneHourAgo,
+      },
+      {
+        id: crypto.randomUUID(),
+        userId: sophie.id,
+        type: 'photo',
+        mediaUrl: 'https://images.unsplash.com/photo-1499636138143-bd630f5cf386?w=800', // Cookies
+        content: "Biscuits pour le Père Noël (et pour moi) 🍪🥛",
+        caption: "Biscuits pour le Père Noël (et pour moi) 🍪🥛",
+        region: 'laval' as const,
+        fireCount: 56,
+        createdAt: threeHoursAgo,
+      }
     ];
     
-    const createdStories = await db.insert(stories).values(sampleStories).returning();
-    console.log(`✅ Created ${createdStories.length} stories`);
+    // @ts-ignore - manual timestamp override
+    const createdPosts = await db.insert(posts).values(samplePosts).returning();
+    console.log(`✅ Created ${createdPosts.length} posts (Ghost Town populated!)`);
+
+    // 3. CREATE COMMENTS (Social Proof on Launch Post)
+    const launchPost = createdPosts.find(p => p.userId === teamUser.id);
     
-    console.log('\n🎉 Seeding complete!');
-    console.log('\n📝 Demo login credentials:');
-    console.log('   Email: demo@zyeute.ca');
-    console.log('   Password: demo123');
-    console.log('\n   Or use any of the created accounts with password: demo123');
+    if (launchPost) {
+      const socialProofComments = [
+        {
+          postId: launchPost.id,
+          userId: julie.id,
+          content: "Yessir! J'ai eu mon VIP! 🎉 Merci l'équipe!",
+        },
+        {
+          postId: launchPost.id,
+          userId: patrice.id,
+          content: "Ça commence fort! Joyeux Noël la gang 🎄",
+        },
+        {
+          postId: launchPost.id,
+          userId: sophie.id,
+          content: "Trop hâte de tester ça! 😻 C'est tiguidou!",
+        },
+        {
+          postId: launchPost.id,
+          userId: createdUsers.find(u => u.username === 'demo')!.id,
+          content: "Let's gooo! 🔥",
+        }
+      ];
+
+      await db.insert(comments).values(socialProofComments);
+      console.log(`✅ Added ${socialProofComments.length} hype comments to the launch post`);
+    }
+
+    // 4. FOLLOWS
+    // Everyone follows Team Zyeuté
+    const followsData = createdUsers
+      .filter(u => u.id !== teamUser.id)
+      .map(u => ({
+        followerId: u.id,
+        followingId: teamUser.id,
+      }));
+    await db.insert(follows).values(followsData);
+    console.log(`✅ Everyone is following Team Zyeuté`);
+
+    console.log('\n🎉 OPERATION GHOST TOWN COMPLETE!');
+    console.log('   The feed is alive. The hype is real.');
     
   } catch (error) {
     console.error('❌ Seeding failed:', error);

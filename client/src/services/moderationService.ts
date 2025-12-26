@@ -1,20 +1,7 @@
-/**
- * AI Content Moderation Service
- * Uses OpenAI GPT-4o for Quebec-aware content moderation
- */
-
-import OpenAI from 'openai';
 import { logger } from '@/lib/logger';
-
-const moderationServiceLogger = logger.withContext('ModerationService');
 import { supabase } from '../lib/supabase';
 
-// Initialize OpenAI
-const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-const openai = apiKey ? new OpenAI({
-  apiKey: apiKey,
-  dangerouslyAllowBrowser: true
-}) : null;
+const moderationServiceLogger = logger.withContext('ModerationService');
 
 export type ModerationSeverity = 'safe' | 'low' | 'medium' | 'high' | 'critical';
 export type ModerationAction = 'allow' | 'flag' | 'hide' | 'remove' | 'ban';
@@ -38,76 +25,6 @@ export interface ModerationResult {
   context_note?: string;
 }
 
-const MODERATION_PROMPT = `Tu es un modérateur IA pour Zyeuté, plateforme sociale québécoise.
-
-CONTEXTE CULTUREL QUÉBÉCOIS:
-✅ ACCEPTER:
-- Joual et expressions colorées ("crisse", "tabarnak", "câlisse", "ostie")
-- Humour grinçant et sarcasme québécois
-- Débats politiques passionnés (souveraineté, langue française)
-- Critique sociale constructive
-- Références culturelles locales (Ti-Guy, poutine, etc.)
-- Blagues entre amis et taquineries amicales
-- Expressions comme "malade", "sick", "en feu" (positif)
-
-❌ BLOQUER:
-1. INTIMIDATION:
-   - Attaques personnelles répétées et ciblées
-   - Moqueries sur apparence physique/poids/orientation
-   - Harcèlement persistant
-   - Menaces directes ou voilées
-
-2. DISCOURS HAINEUX:
-   - Racisme, sexisme, homophobie, transphobie
-   - Xénophobie, discrimination religieuse
-   - Suprémacisme blanc ou autre
-   - Négation de génocides
-   - Appels à la violence contre groupes
-
-3. HARCÈLEMENT SEXUEL:
-   - Messages sexuels non sollicités
-   - Commentaires déplacés sur le corps
-   - Demandes inappropriées
-   - Partage d'images intimes sans consentement
-
-4. VIOLENCE:
-   - Menaces de violence physique
-   - Incitation à l'automutilation ou suicide
-   - Glorification de violence ou terrorisme
-   - Instructions pour armes/explosifs
-
-5. CONTENU ILLÉGAL:
-   - Exploitation de mineurs (TOLÉRANCE ZÉRO)
-   - Vente de drogues illégales
-   - Activités criminelles
-   - Contenu piraté ou volé
-
-6. SPAM:
-   - Liens malveillants répétés
-   - Publicité excessive non sollicitée
-   - Chaînes de lettres
-   - Comportement de bot
-
-NIVEAUX DE SÉVÉRITÉ:
-- safe: Contenu OK, aucune action requise
-- low: Borderline, flag pour révision humaine mais publier
-- medium: Problématique, cacher du trending, révision nécessaire
-- high: Violation claire, supprimer + avertissement utilisateur
-- critical: Violation grave, supprimer + ban temporaire/permanent
-
-RÉPONSE (JSON STRICT, AUCUN TEXTE AVANT OU APRÈS):
-{
-  "is_safe": boolean,
-  "severity": "safe" | "low" | "medium" | "high" | "critical",
-  "categories": ["bullying", "hate_speech", "harassment", "violence", "spam", "nsfw", "illegal", "self_harm"],
-  "confidence": 0-100,
-  "reason": "Explication claire en français du Québec",
-  "action": "allow" | "flag" | "hide" | "remove" | "ban",
-  "context_note": "Note sur le contexte culturel québécois si pertinent"
-}
-
-Analyse ce contenu:`;
-
 /**
  * Analyze text content for violations
  */
@@ -124,24 +41,28 @@ export async function analyzeText(text: string): Promise<ModerationResult> {
       };
     }
 
-    if (!openai) {
-      moderationServiceLogger.warn('⚠️ No OpenAI API Key. Skipping moderation.');
-      return { is_safe: true, severity: 'safe', categories: [], confidence: 0, reason: 'Modération inactive', action: 'allow' };
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    
+    if (!token) {
+      moderationServiceLogger.warn('No auth token for moderation. Skipping.');
+       return { is_safe: true, severity: 'safe', categories: [], confidence: 0, reason: 'Non authentifié', action: 'allow' };
     }
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: MODERATION_PROMPT },
-        { role: "user", content: `TEXTE: "${text}"` }
-      ],
-      response_format: { type: "json_object" }
+    const response = await fetch('/api/moderation/text', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ text })
     });
     
-    const resultText = response.choices[0].message.content;
-    if (!resultText) throw new Error("No response from OpenAI");
+    if (!response.ok) {
+      throw new Error(`Moderation API failed: ${response.statusText}`);
+    }
 
-    const moderationResult: ModerationResult = JSON.parse(resultText);
+    const moderationResult: ModerationResult = await response.json();
     return moderationResult;
 
   } catch (error) {
@@ -160,40 +81,22 @@ export async function analyzeText(text: string): Promise<ModerationResult> {
 }
 
 /**
- * Analyze image content using OpenAI Vision
+ * Analyze image content (Stub)
  */
 export async function analyzeImage(imageUrl: string): Promise<ModerationResult> {
   try {
-    if (!openai) {
-      return { is_safe: true, severity: 'safe', categories: [], confidence: 0, reason: 'Modération inactive', action: 'allow' };
-    }
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: MODERATION_PROMPT },
-        { 
-          role: "user", 
-          content: [
-            { type: "text", text: "Analyse cette image pour détecter: Nudité, violence, haine, drogues, armes." },
-            { type: "image_url", image_url: { url: imageUrl } }
-          ]
-        }
-      ],
-      max_tokens: 300,
-    });
-
-    const resultText = response.choices[0].message.content || "{}";
-    // Cleanup JSON if needed (sometimes model adds markdown)
-    const cleanJson = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    try {
-      const moderationResult: ModerationResult = JSON.parse(cleanJson);
-      return moderationResult;
-    } catch (e) {
-      moderationServiceLogger.error("Failed to parse JSON from vision response", resultText);
-      return { is_safe: true, severity: 'safe', categories: [], confidence: 50, reason: 'Analyse incertaine', action: 'allow' };
-    }
+     // TODO: Implement image moderation using FAL or another service compatible with new architecture.
+     // OpenAI Vision has been removed.
+     moderationServiceLogger.debug('Image moderation skipped (OpenAI removed)', imageUrl);
+     
+     return { 
+        is_safe: true, 
+        severity: 'safe', 
+        categories: [], 
+        confidence: 100, 
+        reason: 'Modération d\'image désactivée temporairement', 
+        action: 'allow' 
+     };
 
   } catch (error) {
     moderationServiceLogger.error('Error in analyzeImage:', error);

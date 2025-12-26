@@ -1,0 +1,29 @@
+
+> build
+> vite build && esbuild server/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/index.cjs --packages=external
+
+[36mvite v7.3.0 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32mΓ£ô[39m 2441 modules transformed.
+Γ£ù Build failed in 13.04s
+error during build:
+client/src/components/features/ContinuousFeed.tsx (9:9): "FixedSizeList" is not exported by "node_modules/react-window/dist/react-window.js", imported by "client/src/components/features/ContinuousFeed.tsx".
+file: C:/Users/north/zyeute-v3-1/client/src/components/features/ContinuousFeed.tsx:9:9
+
+ 7: import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+ 8: // @ts-ignore
+ 9: import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
+             ^
+10: import AutoSizer from 'react-virtualized-auto-sizer';
+11: import { SingleVideoView } from './SingleVideoView';
+
+    at getRollupError (file:///C:/Users/north/zyeute-v3-1/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at error (file:///C:/Users/north/zyeute-v3-1/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+    at Module.error (file:///C:/Users/north/zyeute-v3-1/node_modules/rollup/dist/es/shared/node-entry.js:17022:16)
+    at Module.traceVariable (file:///C:/Users/north/zyeute-v3-1/node_modules/rollup/dist/es/shared/node-entry.js:17478:29)
+    at ModuleScope.findVariable (file:///C:/Users/north/zyeute-v3-1/node_modules/rollup/dist/es/shared/node-entry.js:15141:39)
+    at ReturnValueScope.findVariable (file:///C:/Users/north/zyeute-v3-1/node_modules/rollup/dist/es/shared/node-entry.js:5688:38)
+    at FunctionBodyScope.findVariable (file:///C:/Users/north/zyeute-v3-1/node_modules/rollup/dist/es/shared/node-entry.js:5688:38)
+    at ReturnValueScope.findVariable (file:///C:/Users/north/zyeute-v3-1/node_modules/rollup/dist/es/shared/node-entry.js:5688:38)
+    at FunctionBodyScope.findVariable (file:///C:/Users/north/zyeute-v3-1/node_modules/rollup/dist/es/shared/node-entry.js:5688:38)
+    at Identifier.bind (file:///C:/Users/north/zyeute-v3-1/node_modules/rollup/dist/es/shared/node-entry.js:5462:40)

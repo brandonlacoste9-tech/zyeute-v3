@@ -17,14 +17,16 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { GuestModeProvider } from '@/contexts/GuestModeContext';
 import { MapleSpinner } from '@/components/ui/MapleSpinner';
 import { AchievementListener } from '@/components/gamification/AchievementModal';
-import { ProtectedAdminRoute } from '@/components/auth/ProtectedAdminRoute';
+import { ProtectedAdminRoute } from '@/components/auth';
 // import { SwarmDebug } from '@/components/SwarmDebug';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ColonyProvider } from '@/components/providers/colony-provider';
+import { ProtectedUserRoute } from '@/components/auth';
+import { RedirectIfAuthenticated } from '@/components/auth';
 import { GUEST_SESSION_DURATION, GUEST_MODE_KEY, GUEST_TIMESTAMP_KEY, GUEST_VIEWS_KEY } from '@/lib/constants';
 
 // Core Pages - Eagerly loaded (frequently accessed)
-import Home from '@/pages/Home';
+// Home (deprecated) -> Redirects to Feed
 import Feed from '@/pages/Feed';
 import Profile from '@/pages/Profile';
 import Explore from '@/pages/Explore';
@@ -33,6 +35,7 @@ import Signup from '@/pages/Signup';
 import AuthCallback from '@/pages/AuthCallback';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
+import VerifyEmail from '@/pages/VerifyEmail';
 
 // Lazy-loaded Pages - Split into separate bundles (rarely accessed)
 const Upload = lazy(() => import('@/pages/Upload'));
@@ -162,20 +165,38 @@ function App() {
                           <MainLayout>
                             <PageTransition>
                               <Routes>
-                                {/* Public Routes */}
-                                <Route path="/login" element={<Login />} />
-                                <Route path="/signup" element={<Signup />} />
-                                <Route path="/forgot-password" element={<ForgotPassword />} />
-                                <Route path="/reset-password" element={<ResetPassword />} />
+                                {/* Public Routes - Wrapped to auto-redirect logged-in users */}
+                                <Route path="/login" element={
+                                  <RedirectIfAuthenticated>
+                                    <Login />
+                                  </RedirectIfAuthenticated>
+                                } />
+                                <Route path="/signup" element={
+                                  <RedirectIfAuthenticated>
+                                    <Signup />
+                                  </RedirectIfAuthenticated>
+                                } />
+                                <Route path="/forgot-password" element={
+                                  <RedirectIfAuthenticated>
+                                    <ForgotPassword />
+                                  </RedirectIfAuthenticated>
+                                } />
+                                <Route path="/reset-password" element={
+                                  <RedirectIfAuthenticated>
+                                    <ResetPassword />
+                                  </RedirectIfAuthenticated>
+                                } />
+                                <Route path="/verify-email" element={<VerifyEmail />} />
+                                <Route path="/verify-email/:token" element={<VerifyEmail />} />
                                 <Route path="/auth/callback" element={<AuthCallback />} />
 
                                 {/* Protected Routes - with granular error boundaries */}
                                 <Route
                                   path="/"
                                   element={
-                                    <ErrorBoundary>
-                                      <Home />
-                                    </ErrorBoundary>
+                                    <ProtectedRoute>
+                                      <Navigate to="/feed" replace />
+                                    </ProtectedRoute>
                                   }
                                 />
                                 <Route
@@ -201,33 +222,33 @@ function App() {
                                 <Route
                                   path="/upload"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <ErrorBoundary>
                                         <Suspense fallback={<LazyLoadFallback />}>
                                           <Upload />
                                         </Suspense>
                                       </ErrorBoundary>
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/story/create"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <Suspense fallback={<LazyLoadFallback />}>
                                         <StoryCreator />
                                       </Suspense>
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/notifications"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <Suspense fallback={<LazyLoadFallback />}>
                                         <Notifications />
                                       </Suspense>
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
@@ -255,23 +276,23 @@ function App() {
                                 <Route
                                   path="/settings"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <ErrorBoundary>
                                         <Suspense fallback={<LazyLoadFallback />}>
                                           <Settings />
                                         </Suspense>
                                       </ErrorBoundary>
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/analytics"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <Suspense fallback={<LazyLoadFallback />}>
                                         <Analytics />
                                       </Suspense>
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
 
@@ -279,187 +300,187 @@ function App() {
                                 <Route
                                   path="/artiste"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <Suspense fallback={<LazyLoadFallback />}>
                                         <Artiste />
                                       </Suspense>
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/studio"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <Suspense fallback={<LazyLoadFallback />}>
                                         <Studio />
                                       </Suspense>
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/marketplace"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <Suspense fallback={<LazyLoadFallback />}>
                                         <Marketplace />
                                       </Suspense>
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/premium"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <Suspense fallback={<LazyLoadFallback />}>
                                         <Premium />
                                       </Suspense>
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/challenges"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <Suspense fallback={<LazyLoadFallback />}>
                                         <Challenges />
                                       </Suspense>
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/voice"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <VoiceSettingsPage />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/tags"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <TagsSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/comments"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <CommentsSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/sharing"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <SharingSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/restricted"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <RestrictedAccountsSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/favorites"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <FavoritesSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/muted"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <MutedAccountsSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/content"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <ContentPreferencesSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/media"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <MediaSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/audio"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <AudioSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/storage"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <StorageSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/app"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <AppSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/region"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <RegionSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/language"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <LanguageSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/profile"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <ProfileEditSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/privacy"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <PrivacySettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
                                   path="/settings/notifications"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <NotificationSettings />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
 
@@ -467,9 +488,9 @@ function App() {
                                 <Route
                                   path="/ai-studio"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <AIStudio />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
 
@@ -485,9 +506,9 @@ function App() {
                                 <Route
                                   path="/live/go"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <GoLive />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route
@@ -518,9 +539,9 @@ function App() {
                                 <Route
                                   path="/achievements"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <Achievements />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
 
@@ -528,9 +549,9 @@ function App() {
                                 <Route
                                   path="/revenue"
                                   element={
-                                    <ProtectedRoute>
+                                    <ProtectedUserRoute>
                                       <CreatorRevenue />
-                                    </ProtectedRoute>
+                                    </ProtectedUserRoute>
                                   }
                                 />
 

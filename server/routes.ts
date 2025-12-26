@@ -18,7 +18,7 @@ import {
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { fal } from "@fal-ai/client";
-import { v3TiGuyChat, v3Flow, v3Feed, v3Microcopy, FAL_PRESETS } from "./v3-swarm.js";
+import { v3TiGuyChat, v3Flow, v3Feed, v3Microcopy, v3ModerateUserContent, FAL_PRESETS } from "./v3-swarm.js";
 import emailAutomation from "./email-automation.js";
 // Import Studio API routes
 import studioRoutes from "./routes/studio.js";
@@ -745,6 +745,34 @@ export async function registerRoutes(
   });
 
   // ============ AI GENERATION ROUTES ============
+
+  // User Content Moderation (Quebec Context)
+  app.post("/api/moderation/text", requireAuth, async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (!text || typeof text !== 'string') {
+        return res.status(400).json({ error: "Text is required" });
+      }
+
+      const result = await v3ModerateUserContent(text);
+      res.json(result);
+    } catch (error) {
+      console.error("Moderation error:", error);
+      res.status(500).json({ error: "Failed to moderate content" });
+    }
+  });
+
+  // Ti-Guy Chat Completion via Server (DeepSeek)
+  app.post("/api/tiguy/completion", optionalAuth, async (req, res) => {
+    try {
+      const { prompt, history } = req.body;
+      const response = await v3TiGuyChat(prompt, history);
+      res.json({ content: response });
+    } catch (error) {
+       console.error("Ti-Guy completion error:", error);
+       res.status(500).json({ content: "Ouin, j'ai eu un petit bug. Réessaie! 🦫" });
+    }
+  });
 
   // Generate image with Flux
   app.post("/api/ai/generate-image", aiRateLimiter, requireAuth, async (req, res) => {

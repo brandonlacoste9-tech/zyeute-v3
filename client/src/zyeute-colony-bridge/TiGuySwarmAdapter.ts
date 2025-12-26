@@ -1,8 +1,8 @@
-import OpenAI from 'openai';
 import { colonyClient } from './ColonyClient';
 import { BeeType, SwarmResponse } from './types';
 import { deepSeekCircuit, swarmCircuit } from './CircuitBreaker';
 import { processJoualTask, generateJoualResponse, joualify } from '@/services/bees/JoualBee';
+import { supabase } from '@/lib/supabase';
 
 // ═══════════════════════════════════════════════════════════════
 // COMPREHENSIVE JOUAL SYSTEM PROMPT
@@ -54,25 +54,12 @@ function getRandomFallback(): string {
 // ═══════════════════════════════════════════════════════════════
 
 export class TiGuySwarmAdapter {
-  private deepseek: OpenAI | null;
   private useLocalJoualBee: boolean;
 
   constructor() {
-    const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
-    
-    // Initialize DeepSeek V3 client if API key available
-    this.deepseek = apiKey ? new OpenAI({
-      baseURL: 'https://api.deepseek.com',
-      apiKey: apiKey,
-      dangerouslyAllowBrowser: true // Move to server-side in production
-    }) : null;
-
-    // Use local JoualBee if no API key
-    this.useLocalJoualBee = !apiKey;
-    
-    if (this.useLocalJoualBee) {
-      console.log('🐝 Ti-Guy running in local JoualBee mode (no DeepSeek API key)');
-    }
+    // Client-side OpenAI/DeepSeek removed.
+    // We now rely on the Server API (/api/tiguy/completion).
+    this.useLocalJoualBee = false;
   }
 
   /**
@@ -198,7 +185,7 @@ export class TiGuySwarmAdapter {
       return processJoualTask(prompt);
     }
 
-    // Use circuit breaker for DeepSeek API
+    // Use circuit breaker for Server API
     const response = await deepSeekCircuit.executeWithFallback(
       async () => this.callDeepSeek(prompt, history),
       () => {
@@ -222,30 +209,37 @@ export class TiGuySwarmAdapter {
   }
 
   /**
-   * Calls DeepSeek V3 API
+   * Calls DeepSeek V3 API (via Server Proxy)
    */
   private async callDeepSeek(
     prompt: string, 
     history: { role: 'user' | 'assistant', content: string }[]
   ): Promise<string> {
-    if (!this.deepseek) {
-      throw new Error('DeepSeek client not initialized');
+    
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    
+    // Auth header is optional (server handles optionalAuth)
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const messages = [
-      { role: 'system', content: TI_GUY_SYSTEM_PROMPT },
-      ...history,
-      { role: 'user', content: prompt }
-    ] as any;
-
-    const completion = await this.deepseek.chat.completions.create({
-      messages: messages,
-      model: 'deepseek-chat', // DeepSeek V3
-      temperature: 0.9, // Balanced for natural Joual
-      max_tokens: 1024
+    const response = await fetch('/api/tiguy/completion', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ prompt, history })
     });
 
-    return completion.choices[0].message.content || "Désolé, j'ai perdu le fil.";
+    if (!response.ok) {
+        throw new Error(`Server API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.content || "Ouin, j'ai rien reçu.";
   }
 
   /**
