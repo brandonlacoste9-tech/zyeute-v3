@@ -471,6 +471,51 @@ export async function v3TiGuyChat(userMessage: string, conversationHistory?: Arr
   }
 }
 
+// V3-TI-GUY: Structured Content Generation (JSON)
+export async function v3TiGuyGenContent(prompt: string, intent: string): Promise<Record<string, unknown>> {
+  const systemPrompt = `Tu es Ti-Guy, un assistant AI 100% Québécois. 
+Parle en Joual, sois drôle, franc, jamais en français standard.
+
+CONTEXTE:
+Intent: ${intent}
+
+GÉNÈRE:
+- Une caption punchée en Joual
+- Une liste de 3 à 5 emojis pertinents
+- 1 à 3 tags québécois (ex: Poutine, Hiver, Construction)
+- Un flag true si le contenu est inapproprié ou sensible
+- Une réponse signature de Ti-Guy (genre: "C'est ben correct ça, mon loup!")
+
+FORMATE ta réponse en JSON STRICT:
+{
+  "caption": string,
+  "emojis": string[],
+  "tags": string[],
+  "flagged": boolean,
+  "reply": string
+}`;
+
+  const message = `Texte utilisateur: "${prompt}"`;
+  const result = await callV3(systemPrompt, message, true);
+  
+  if (typeof result === 'string') {
+    // Should not happen if parsing works
+    try {
+        return JSON.parse(result);
+    } catch {
+        return {
+            caption: "Oups, j'ai buggé!",
+            emojis: ["🐛"],
+            tags: ["Bug"],
+            flagged: false,
+            reply: "Désolé big, le système a eu un hoquet."
+        };
+    }
+  }
+  
+  return result;
+}
+
 // V3-MOD: Content moderation
 export async function v3Mod(content: string): Promise<V3ModResult> {
   const message = `Content to moderate:\n${content}`;

@@ -51,39 +51,50 @@ export async function generateImage(
     const enhancedPrompt = `${prompt}, style ${style}, high quality, detailed. 
     CONTEXTE QUÉBÉCOIS: Include subtle Quebec elements if fitting (snow, nature, architecture).`;
 
-    // 4. Call OpenAI DALL-E 3
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
+// 4. Call Server API (FAL via Backend)
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    
+    if (!token) {
+        // Fallback to demo for guests
+        imageServiceLogger.info("Guest user, using demo mode");
+         return {
+          url: `https://picsum.photos/seed/${encodeURIComponent(prompt)}/1024/1024`,
+          prompt,
+          style,
+          revised_prompt: `(Guest) ${prompt}`
+        };
+    }
+
+    const response = await fetch('/api/ai/generate-image', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiKey}`
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        model: 'dall-e-3',
         prompt: enhancedPrompt,
-        n: 1,
-        size: '1024x1024',
-        quality: 'standard'
+        aspectRatio: "1:1"
       })
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      if (response.status === 401) throw new Error("Unauthorized");
+      throw new Error(`Server API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const imageUrl = data.data[0]?.url;
-    const revisedPrompt = data.data[0]?.revised_prompt;
+    const imageUrl = data.imageUrl;
 
     if (!imageUrl) {
-      throw new Error('No image URL returned');
+      throw new Error('No image URL returned from server');
     }
 
     toast.success('🎨 Image générée avec succès!');
     return {
       url: imageUrl,
       prompt,
-      revised_prompt: revisedPrompt || enhancedPrompt,
+      revised_prompt: enhancedPrompt,
       style
     };
 
@@ -91,7 +102,7 @@ export async function generateImage(
     imageServiceLogger.error('Image generation error:', error);
     toast.error('Erreur de création. Réessaie!');
     
-    // Fallback to demo image
+    // Fallback to demo image on error
     return {
       url: `https://picsum.photos/seed/${encodeURIComponent(prompt)}/1024/1024`,
       prompt,

@@ -18,7 +18,7 @@ import {
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { fal } from "@fal-ai/client";
-import { v3TiGuyChat, v3Flow, v3Feed, v3Microcopy, v3ModerateUserContent, FAL_PRESETS } from "./v3-swarm.js";
+import { v3TiGuyChat, v3Flow, v3Feed, v3Microcopy, v3ModerateUserContent, v3TiGuyGenContent, FAL_PRESETS } from "./v3-swarm.js";
 import emailAutomation from "./email-automation.js";
 // Import Studio API routes
 import studioRoutes from "./routes/studio.js";
@@ -771,6 +771,18 @@ export async function registerRoutes(
     } catch (error) {
        console.error("Ti-Guy completion error:", error);
        res.status(500).json({ content: "Ouin, j'ai eu un petit bug. Réessaie! 🦫" });
+    }
+  });
+
+  // Ti-Guy Structured Content Generation (JSON)
+  app.post("/api/tiguy/generate", optionalAuth, async (req, res) => {
+    try {
+      const { text, intent } = req.body;
+      const result = await v3TiGuyGenContent(text || "", intent || "joke");
+      res.json(result);
+    } catch (error) {
+       console.error("Ti-Guy generate error:", error);
+       res.status(500).json({ error: "Ouin, j'ai eu un petit bug. Réessaie! 🦫" });
     }
   });
 

@@ -30,18 +30,36 @@ export type TiGuyResponse = {
  * @returns Response with caption, emojis, tags, moderation flag, and Ti-Guy's reply
  */
 export const TiGuyAgent = async (input: TiGuyInput): Promise<TiGuyResponse | null> => {
-  tiGuyAgentLogger.info('Ti-Guy Agent called (Demo Mode)', input);
+  tiGuyAgentLogger.info('Ti-Guy Agent called (Server Mode)', input);
   
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 600));
+  try {
+    const response = await fetch('/api/tiguy/generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(input)
+    });
 
-  return generateDemoResponse(input);
+    if (!response.ok) {
+        throw new Error('Server returned error');
+    }
+
+    const data = await response.json();
+    return data as TiGuyResponse;
+
+  } catch (error) {
+    tiGuyAgentLogger.error('Ti-Guy Agent error (falling back to demo):', error);
+    // Fallback to demo response if server fails
+    return generateDemoResponse(input);
+  }
 };
 
 /**
- * Generate a demo response when OpenAI is not available
+ * Generate a demo response when Server/OpenAI is not available
  */
 function generateDemoResponse(input: TiGuyInput): TiGuyResponse {
+  // ... Keep existing demo fallback structure ...
   const responses: Record<TiGuyInput['intent'], TiGuyResponse> = {
     joke: {
       caption: "Haha! C'est ben drôle ça, mon loup! 😂🔥",
