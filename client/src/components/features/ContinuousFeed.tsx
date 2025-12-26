@@ -1,20 +1,23 @@
 /**
- * ContinuousFeed - Full-screen vertical video feed
- * Adapts the Player experience for the main feed
- * NOW WITH VIRTUALIZATION by REACT-WINDOW
+ * ContinuousFeed - TikTok-style vertical video feed
+ * OPTIMIZED 3-VIDEO BUFFER IMPLEMENTATION
+ * 
+ * Features:
+ * - Renders only 3 videos max (Prev, Current, Next) for zero memory leaks
+ * - CSS transform/opacity transitions for 60fps performance
+ * - Custom touch handling for unified swipe experience
+ * - Keyboard navigation support
+ * - Haptics integration
  */
 
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
-// @ts-ignore
-import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
-import AutoSizer from 'react-virtualized-auto-sizer';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { SingleVideoView } from './SingleVideoView';
 import { getExplorePosts, togglePostFire, getCurrentUser } from '@/services/api';
 import { useHaptics } from '@/hooks/useHaptics';
-import { useVideoPreloader } from '@/hooks/useVideoPreloader';
 import type { Post, User } from '@/types';
 import { logger } from '../../lib/logger';
 import { cn } from '../../lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const feedLogger = logger.withContext('ContinuousFeed');
 
@@ -23,281 +26,226 @@ interface ContinuousFeedProps {
     onVideoChange?: (index: number, post: Post) => void;
 }
 
-const FeedRow = memo(({ index, style, data }: ListChildComponentProps) => {
-    const { posts, currentIndex, handleFireToggle, handleComment, handleShare, getPreloadedUrl } = data;
-    const post = posts[index];
-    const isActive = index === currentIndex;
-
-    // Use a ref to ensure we only try to play properly mounted videos
-    const rowRef = useRef<HTMLDivElement>(null);
-
-    if (!post) return null;
-
-    // Inject preloaded blob URL if available
-    const effectivePost = {
-        ...post,
-        mediaUrl: getPreloadedUrl(post.mediaUrl)
-    };
-
-    return (
-        <div style={style} ref={rowRef} data-video-index={index} className="w-full h-full">
-            <SingleVideoView
-                post={effectivePost}
-                user={post.user}
-                isActive={isActive}
-                onFireToggle={handleFireToggle}
-                onComment={handleComment}
-                onShare={handleShare}
-            />
-        </div>
-    );
-}, (prevProps, nextProps) => {
-    // Only re-render if the active status changes or the post data itself changes
-    const prevData = prevProps.data;
-    const nextData = nextProps.data;
-
-    const isPrevActive = prevProps.index === prevData.currentIndex;
-    const isNextActive = nextProps.index === nextData.currentIndex;
-    
-    // Also check if the preloaded URL changed (i.e., blob became available)
-    // getPreloadedUrl is a new function ref on every render of Parent if hook state changes
-    // But since we pass it in itemData, and itemData is recreated...
-    // We rely on `prevData.getPreloadedUrl !== nextData.getPreloadedUrl` implicitly causing re-renders?
-    // Actually, FeedRow memoization comparison needs to be careful.
-    // If we want the row to re-render when the blob arrives, we need to know if the result of getPreloadedUrl(thisPost) changed.
-    
-    // Simple way: check if itemData changed reference?
-    // The default `memo` compares props. `data` is a prop.
-    // If `ContinuousFeed` re-renders (state update in hook -> setBlobCache -> re-render ContinuousFeed -> new itemData object),
-    // then `prevProps.data !== nextProps.data`.
-    // BUT we have a custom comparison function here!
-    
-    // We MUST update the comparison to check data equality strictly or specific fields.
-    // Since `getPreloadedUrl` relies on closure state, if `data` reference changes, we might want to re-render.
-    // But we don't want to re-render ALL rows every time a blob loads for ONE row.
-    
-    // Ideally: Check if `getPreloadedUrl(post.mediaUrl)` result changed?
-    // But we can't call the function easily here without cost.
-    
-    // Compromise: Just re-render if data reference changes? No, that defeats virtualization perf.
-    // However, React Window passes a NEW `data` prop every time the parent renders if we defined `itemData` inline (which we did).
-    // So `prevData !== nextData` is always true if parent re-renders.
-    
-    // The current comparison:
-    // prevData.posts[prevProps.index] === nextData.posts[nextProps.index]
-    
-    // We need to add:
-    // && prevData.getPreloadedUrl(post.mediaUrl) === nextData.getPreloadedUrl(post.mediaUrl)
-    // But `post` is inside the lists.
-    
-    const prevPost = prevData.posts[prevProps.index];
-    const nextPost = nextData.posts[nextProps.index];
-    
-    // Check if resolved URL actually changed for this specific row
-    const prevUrl = prevData.getPreloadedUrl ? prevData.getPreloadedUrl(prevPost?.mediaUrl) : prevPost?.mediaUrl;
-    const nextUrl = nextData.getPreloadedUrl ? nextData.getPreloadedUrl(nextPost?.mediaUrl) : nextPost?.mediaUrl;
-
-    return (
-        isPrevActive === isNextActive &&
-        prevPost === nextPost &&
-        prevProps.style === nextProps.style &&
-        prevUrl === nextUrl
-    );
-});
-
 export const ContinuousFeed: React.FC<ContinuousFeedProps> = ({ className, onVideoChange }) => {
-    const listRef = useRef<List>(null);
-    const { tap } = useHaptics();
-
+    const { tap, impact } = useHaptics();
+    
+    // Data State
     const [posts, setPosts] = useState<Array<Post & { user: User }>>([]);
     const [page, setPage] = useState(0);
-    const [currentIndex, setCurrentIndex] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [hasMore, setHasMore] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
+    
+    // Viewport State
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const isInteracting = useRef(false);
 
-    // Fetch video feed (Latest Public Videos)
-    const fetchVideoFeed = useCallback(async () => {
-        setIsLoading(true);
+    // Initial Fetch
+    const fetchVideoFeed = useCallback(async (pageNum: number, isInitial = false) => {
+        if (isInitial) setIsLoading(true);
         try {
-            const data = await getExplorePosts(0, 10);
-
-            if (data) {
-                // Map posts to ensure they all have a user object, providing a fallback if missing
-                const processedPosts = data.map(p => {
-                    if (!p.user) {
-                        return {
-                            ...p,
-                            user: {
-                                id: 'unknown',
-                                username: 'Utilisateur inconnu',
-                                display_name: 'Utilisateur inconnu',
-                                avatar_url: '',
-                                bio: '',
-                                created_at: new Date().toISOString(),
-                                is_verified: false,
-                            } as User
-                        };
-                    }
-                    return p as Post & { user: User };
-                });
-                
-                setPosts(processedPosts);
-                setHasMore(data.length === 10);
-                setPage(0);
-            }
-        } catch (error) {
-            feedLogger.error('Error fetching video feed:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
-    // Load more videos
-    const loadMoreVideos = useCallback(async () => {
-        if (loadingMore || !hasMore) return;
-
-        setLoadingMore(true);
-        try {
-            const nextPage = page + 1;
-            const data = await getExplorePosts(nextPage, 10);
-
+            const data = await getExplorePosts(pageNum, 10);
+            
             if (data && data.length > 0) {
-                 const processedPosts = data.map(p => {
-                    if (!p.user) {
-                        return {
-                            ...p,
-                            user: {
-                                id: 'unknown',
-                                username: 'Utilisateur inconnu',
-                                display_name: 'Utilisateur inconnu',
-                                avatar_url: '',
-                                bio: '',
-                                created_at: new Date().toISOString(),
-                                is_verified: false,
-                            } as User
-                        };
-                    }
-                    return p as Post & { user: User };
-                });
+                 const processedPosts = data.map(p => ({
+                    ...p,
+                    user: p.user || {
+                        id: 'unknown',
+                        username: 'Utilisateur Zyeuté',
+                        display_name: 'Utilisateur Zyeuté',
+                        avatar_url: '',
+                        is_verified: false,
+                    } as User
+                }));
 
-                setPosts((prev) => [...prev, ...processedPosts]);
+                setPosts(prev => isInitial ? processedPosts : [...prev, ...processedPosts]);
                 setHasMore(data.length === 10);
-                setPage(nextPage);
             } else {
                 setHasMore(false);
             }
         } catch (error) {
-            feedLogger.error('Error loading more videos:', error);
+            feedLogger.error('Error fetching feed:', error);
         } finally {
-            setLoadingMore(false);
+            if (isInitial) setIsLoading(false);
         }
-    }, [page, loadingMore, hasMore]);
+    }, []);
 
-    // Initial fetch
     useEffect(() => {
-        fetchVideoFeed();
+        fetchVideoFeed(0, true);
     }, [fetchVideoFeed]);
 
-    // Handle items rendered (for pagination and tracking current index)
-    const onItemsRendered = useCallback(({ visibleStartIndex, visibleStopIndex }: any) => {
-        // We assume the top-most visible item is the "current" one in a snap-scroll context
-        const newIndex = visibleStartIndex;
+    // Load More Logic - Trigger when getting close to end
+    useEffect(() => {
+        if (currentIndex > posts.length - 4 && hasMore && !isLoading) {
+            setPage(p => {
+                const nextPage = p + 1;
+                fetchVideoFeed(nextPage);
+                return nextPage;
+            });
+        }
+    }, [currentIndex, hasMore, isLoading, posts.length, fetchVideoFeed]);
 
-        if (newIndex !== currentIndex && newIndex >= 0 && newIndex < posts.length) {
-            setCurrentIndex(newIndex);
-            if (onVideoChange && posts[newIndex]) {
-                onVideoChange(newIndex, posts[newIndex]);
+    // Notify parent of video change
+    useEffect(() => {
+        if (posts[currentIndex] && onVideoChange) {
+            onVideoChange(currentIndex, posts[currentIndex]);
+        }
+    }, [currentIndex, posts, onVideoChange]);
+
+
+    // Navigation Handlers
+    const goNext = useCallback(() => {
+        if (currentIndex < posts.length - 1) {
+            setCurrentIndex(prev => prev + 1);
+            impact();
+        }
+    }, [currentIndex, posts.length, impact]);
+
+    const goPrev = useCallback(() => {
+        if (currentIndex > 0) {
+            setCurrentIndex(prev => prev - 1);
+            impact();
+        }
+    }, [currentIndex, impact]);
+
+    // Keyboard Navigation
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowDown' || e.key === ' ') {
+                e.preventDefault();
+                goNext();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                goPrev();
             }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [goNext, goPrev]);
+
+    // Touch Handling (Swipe)
+    const touchStartY = useRef(0);
+    const handleTouchStart = (e: React.TouchEvent) => {
+        touchStartY.current = e.touches[0].clientY;
+        isInteracting.current = true;
+    };
+    
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (!isInteracting.current) return;
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaY = touchStartY.current - touchEndY;
+        const threshold = 50; // Swipe threshold
+
+        if (deltaY > threshold) {
+            goNext();
+        } else if (deltaY < -threshold) {
+             goPrev();
         }
+        isInteracting.current = false;
+    };
 
-        // Pagination trigger
-        if (visibleStopIndex >= posts.length - 2 && hasMore && !loadingMore) {
-            loadMoreVideos();
-        }
-    }, [currentIndex, posts, hasMore, loadingMore, loadMoreVideos, onVideoChange]);
-
-
-    // Handle fire (like) toggle
+    // Actions
     const handleFireToggle = useCallback(async (postId: string, _currentFire: number) => {
-        feedLogger.debug('Fire toggle for post:', postId);
-        try {
-            const user = await getCurrentUser();
-            if (!user) return;
-            await togglePostFire(postId, user.id);
-        } catch (err) {
-            console.error(err);
-        }
+        const user = await getCurrentUser();
+        if (user) togglePostFire(postId, user.id).catch(console.error);
+    }, []);
+
+    const handleShare = useCallback((postId: string) => {
+        const url = `${window.location.origin}/p/${postId}`;
+        if (navigator.share) navigator.share({ title: 'Zyeuté', url });
+        else navigator.clipboard.writeText(url);
     }, []);
 
     const handleComment = useCallback((postId: string) => {
         window.location.href = `/p/${postId}`;
     }, []);
 
-    const handleShare = useCallback(async (postId: string) => {
-        const url = `${window.location.origin}/p/${postId}`;
-        if (navigator.share) {
-            await navigator.share({ title: 'Zyeuté', url });
-        } else {
-            await navigator.clipboard.writeText(url);
-        }
-    }, []);
 
+    // -- RENDER --
+    
     if (isLoading && posts.length === 0) {
         return (
-            <div className={cn("w-full h-full flex items-center justify-center bg-zinc-900", className)}>
-                <div className="w-8 h-8 border-2 border-gold-500/30 border-t-gold-500 rounded-full animate-spin" />
+             <div className="w-full h-full flex items-center justify-center bg-black">
+                <div className="flex flex-col items-center">
+                    <svg className="animate-spin h-10 w-10 text-gold-500 mb-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    <p className="text-gold-400 font-medium">Chargement...</p>
+                </div>
             </div>
         );
     }
 
-    if (posts.length === 0) {
+    if (!isLoading && posts.length === 0) {
         return (
-            <div className={cn("w-full h-full flex flex-col items-center justify-center bg-zinc-900 p-8 text-center", className)}>
-                <div className="text-4xl mb-4">📱</div>
-                <p className="text-stone-400 mb-4">Aucun contenu disponible pour le moment.</p>
+            <div className="w-full h-full flex flex-col items-center justify-center bg-black text-white p-6 text-center">
+                <div className="text-5xl mb-4">📭</div>
+                <h3 className="text-xl font-bold mb-2">C'est vide icitte!</h3>
+                <p className="text-gray-400">Reviens plus tard pour de nouvelles vidéos.</p>
             </div>
         );
     }
-
-    // Preload videos
-    const { getPreloadedUrl } = useVideoPreloader(posts, currentIndex);
-
-    // Data object passed to rows
-    const itemData = {
-        posts,
-        currentIndex,
-        handleFireToggle,
-        handleComment,
-        handleShare,
-        getPreloadedUrl // Pass the helper
-    };
 
     return (
-        <div className={cn("w-full h-full bg-black", className)}>
-            <AutoSizer>
-                {({ height, width }) => (
-                    <List
-                        ref={listRef}
-                        className="no-scrollbar snap-y snap-mandatory scroll-smooth"
-                        height={height}
-                        width={width}
-                        itemCount={posts.length}
-                        itemSize={height} // Full screen height per item
-                        itemData={itemData}
-                        onItemsRendered={onItemsRendered}
-                        overscanCount={1} // Only render 1 item above/below viewport
-                    >
-                        {FeedRow}
-                    </List>
-                )}
-            </AutoSizer>
+        <div 
+            ref={containerRef}
+            className={cn("relative w-full h-full overflow-hidden bg-black touch-none", className)}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+        >
+            <AnimatePresence initial={false} custom={currentIndex}>
+                {posts.map((post, index) => {
+                    // 3-VIDEO BUFFER LOGIC:
+                    // Only render current, previous, and next
+                    if (index < currentIndex - 1 || index > currentIndex + 1) return null;
+                    
+                    const isCurrent = index === currentIndex;
+                    
+                    return (
+                        <motion.div
+                            key={post.id}
+                            className="absolute inset-0 w-full h-full"
+                            initial={{ 
+                                y: index > currentIndex ? '100%' : '-100%', 
+                                opacity: 0 
+                            }}
+                            animate={{ 
+                                y: index === currentIndex ? '0%' : index > currentIndex ? '100%' : '-100%',
+                                opacity: index === currentIndex ? 1 : 0
+                            }}
+                            exit={{ 
+                                y: index < currentIndex ? '-100%' : '100%',
+                                opacity: 0 
+                            }}
+                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            style={{ zIndex: isCurrent ? 10 : 0 }}
+                        >
+                            {/* Only mount VideoPlayer if it's in the buffer window */}
+                            <SingleVideoView
+                                post={post}
+                                user={post.user}
+                                isActive={isCurrent}
+                                onFireToggle={handleFireToggle}
+                                onComment={handleComment}
+                                onShare={handleShare}
+                            />
+                        </motion.div>
+                    );
+                })}
+            </AnimatePresence>
 
-            {loadingMore && (
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-none z-50">
-                    <div className="w-6 h-6 border-2 border-gold-500/30 border-t-gold-500 rounded-full animate-spin" />
-                </div>
-            )}
+            {/* Vertical Progress Dots (Optional Visual Aid) */}
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 z-20 pointer-events-none">
+                {posts.length > 1 && (
+                    <div className="w-1 h-8 bg-white/10 rounded-full flex flex-col items-center justify-start overflow-hidden">
+                        <motion.div 
+                            className="w-full bg-gold-400 rounded-full"
+                            animate={{ height: `${((currentIndex + 1) / posts.length) * 100}%` }}
+                        />
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
