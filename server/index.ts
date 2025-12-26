@@ -15,7 +15,19 @@ app.set("trust proxy", 1);
 
 // Use Helmet for security headers
 app.use(helmet({
-    contentSecurityPolicy: false, // Disable CSP for now to avoid breaking scripts/images
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://api.stripe.com", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "https://vercel.live"],
+            imgSrc: ["'self'", "data:", "https://*.supabase.co", "https://*.gravatar.com", "https://www.zyeute.com"],
+            scriptSrc: ["'self'", "'unsafe-eval'", "'unsafe-inline'", "https://js.stripe.com", "https://vercel.live"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+            frameSrc: ["https://js.stripe.com"],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: [],
+        },
+    },
     crossOriginEmbedderPolicy: false
 }));
 

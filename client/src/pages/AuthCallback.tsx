@@ -7,7 +7,7 @@
  * 2. Code-based OAuth (explicit exchangeCodeForSession)
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -19,8 +19,16 @@ const authCallbackLogger = logger.withContext('AuthCallback');
 const AuthCallback: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const processedRef = useRef(false);
 
   useEffect(() => {
+    // Prevent double-execution in React Strict Mode
+    if (processedRef.current) {
+        authCallbackLogger.debug('⚠️ AuthCallback already processed (skipping double-run)');
+        return;
+    }
+    processedRef.current = true;
+
     // Log current URL state immediately for debugging
     authCallbackLogger.debug('🔍 AuthCallback mounted');
     authCallbackLogger.debug('Current URL:', window.location.href);
@@ -109,10 +117,7 @@ const AuthCallback: React.FC = () => {
           navigate('/', { replace: true });
         } else if (event === 'SIGNED_OUT') {
           authCallbackLogger.debug('Signed out');
-          hasNavigated = true;
-          if (timeoutId) clearTimeout(timeoutId);
-          if (authSubscription) authSubscription.unsubscribe();
-          navigate('/login', { replace: true });
+          // Don't auto-redirect on SIGNED_OUT here, just log
         } else if (event === 'TOKEN_REFRESHED' && session) {
           authCallbackLogger.debug('Token refreshed');
           hasNavigated = true;
@@ -178,10 +183,11 @@ const AuthCallback: React.FC = () => {
                 authCallbackLogger.warn('Current URL:', window.location.href);
                 authCallbackLogger.warn('Hash:', window.location.hash);
                 authCallbackLogger.warn('Search:', window.location.search);
-                authCallbackLogger.warn('This usually means:');
-                authCallbackLogger.warn('  1. OAuth callback URL not in Supabase Redirect URLs');
-                authCallbackLogger.warn('  2. Google OAuth redirect URI mismatch');
-                authCallbackLogger.warn('  3. Session not being stored properly');
+                authCallbackLogger.write('warn', 'Auth failed details', {
+                  url: window.location.href,
+                  reason: 'No session after timeout'
+                });
+                
                 hasNavigated = true;
                 if (authSubscription) authSubscription.unsubscribe();
                 navigate('/login?error=no_session', { replace: true });
@@ -192,7 +198,7 @@ const AuthCallback: React.FC = () => {
               if (authSubscription) authSubscription.unsubscribe();
               navigate('/login?error=callback_failed', { replace: true });
             }
-          }, 3000); // Wait 3 seconds for OAuth token exchange
+          }, 4000); // Increased wait to 4s
         } catch (error) {
           authCallbackLogger.error('❌ Auth callback error:', error);
           hasNavigated = true;
@@ -209,6 +215,10 @@ const AuthCallback: React.FC = () => {
 
     // Cleanup function to prevent memory leaks
     return () => {
+      // NOTE: We don't unsubscribe here if we navigated away successfully,
+      // but in StrictMode unmount happens immediately.
+      // However, since we use processedRef to prevent re-run, consistent cleanup is tricky.
+      // We rely on the navigation to clear the component.
       if (authSubscription) {
         authSubscription.unsubscribe();
       }
