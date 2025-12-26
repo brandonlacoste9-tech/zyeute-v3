@@ -2,7 +2,6 @@ import { type Express } from "express";
 import { type Server } from "http";
 import fs from "fs";
 import path from "path";
-import { nanoid } from "nanoid";
 
 export async function setupVite(server: Server, app: Express) {
   // Use dynamic imports with variables to prevent esbuild from bundling these in production
@@ -48,7 +47,7 @@ export async function setupVite(server: Server, app: Express) {
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
         `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`,
+        `src="/src/main.tsx?v=${Math.random().toString(36).substring(7)}"`,
       );
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
