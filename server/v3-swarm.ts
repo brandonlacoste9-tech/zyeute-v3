@@ -17,7 +17,7 @@ const BASE_TIMEOUT_MS = 30000; // 30 seconds
 const MOD_MAX_ATTEMPTS = 3;
 
 const deepseek = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY,
+  apiKey: process.env.DEEPSEEK_API_KEY || "not-configured",
   baseURL: "https://api.deepseek.com",
   timeout: BASE_TIMEOUT_MS,
 });
