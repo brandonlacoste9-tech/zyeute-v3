@@ -11,6 +11,7 @@ import { Avatar } from '../Avatar';
 import { toast } from '../Toast';
 import { cn } from '../../lib/utils';
 import type { User } from '../../types';
+import { supabase } from '@/lib/supabase';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
@@ -66,22 +67,19 @@ const CheckoutForm: React.FC<{
       if (error) {
         toast.error(error.message || 'Erreur de paiement');
       } else if (paymentIntent?.status === 'succeeded') {
-        const confirmRes = await fetch('/api/gifts/confirm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
+        const { data, error: confirmError } = await supabase.functions.invoke('stripe-checkout', {
+          body: {
+            action: 'confirm-payment',
             paymentIntentId: paymentIntent.id,
             giftType,
             postId,
-          }),
+          }
         });
 
-        if (confirmRes.ok) {
+        if (!confirmError && (!data || !data.error)) {
           onSuccess();
         } else {
-          const data = await confirmRes.json();
-          toast.error(data.error || 'Erreur de confirmation');
+          toast.error(data?.error || confirmError?.message || 'Erreur de confirmation');
         }
       }
     } catch (err: any) {
@@ -149,19 +147,16 @@ export const GiftModal: React.FC<GiftModalProps> = ({
     
     setIsLoadingIntent(true);
     try {
-      const res = await fetch('/api/gifts/create-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('stripe-checkout', {
+        body: {
+          action: 'create-intent',
           giftType: selectedGift.type,
           postId,
-        }),
+        }
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || 'Erreur de paiement');
+      if (error || (data && data.error)) {
+        toast.error(error?.message || data?.error || 'Erreur de paiement');
         return;
       }
 

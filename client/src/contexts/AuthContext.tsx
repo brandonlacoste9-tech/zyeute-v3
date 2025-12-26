@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { checkIsAdmin } from '@/lib/admin';
 import {
@@ -49,132 +49,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
     };
 
-    // Performance tracking helper
-    const trackPerformance = (operation: string, startTime: number) => {
-        const duration = Date.now() - startTime;
-        if (duration > 2000) { // 2 seconds threshold for auth operations
-            console.warn(`⚠️ Slow auth operation: ${operation} took ${duration}ms`);
-        }
-        return duration;
-    };
-
     useEffect(() => {
         let mounted = true;
-        const initStart = Date.now();
 
-        // EMERGENCY FAILSAFE: Force loading to complete after 1s maximum
-        const emergencyTimeout = setTimeout(() => {
-            console.warn('⚠️ EMERGENCY: Forcing UI render after 1 second');
-            trackPerformance('Auth Emergency Timeout', initStart);
-            if (mounted) {
-                setIsLoading(false);
-            }
-        }, 1000);
-
-        async function initializeAuth() {
+        const initializeAuth = async () => {
             try {
-                // 1. Check Supabase Session with AGGRESSIVE retry
-                const sessionStart = Date.now();
+                // 1. Get initial session
+                const { data: { session: initialSession } } = await supabase.auth.getSession();
 
-                let session = null;
-                let attempts = 0;
-                const maxAttempts = 2;
-
-                while (attempts < maxAttempts && !session) {
-                    try {
-                        const { data, error } = await Promise.race([
-                            supabase.auth.getSession(),
-                            new Promise<any>((_, reject) =>
-                                setTimeout(() => reject(new Error('Timeout')), 2000)
-                            )
-                        ]);
-
-                        if (error) throw error;
-                        session = data.session;
-                        break;
-                    } catch (err) {
-                        attempts++;
-                        if (attempts < maxAttempts) {
-                            console.log(`Auth attempt ${attempts} failed, retrying...`);
-                            await new Promise(resolve => setTimeout(resolve, 500));
-                        }
-                    }
-                }
-
-                trackPerformance('Supabase getSession', sessionStart);
-
-                if (session?.user) {
-                    if (mounted) {
-                        setSession(session);
-                        setUser(session.user);
-                        // Check admin status
-                        const adminStart = Date.now();
-                        const adminStatus = await checkIsAdmin(session.user);
-                        trackPerformance('Admin check', adminStart);
+                if (mounted) {
+                    if (initialSession?.user) {
+                        setSession(initialSession);
+                        setUser(initialSession.user);
+                        const adminStatus = await checkIsAdmin(initialSession.user);
                         if (mounted) setIsAdmin(adminStatus);
+                    } else {
+                         // Fallback to Guest Mode check
+                        const validGuest = checkGuestMode();
+                        if (mounted) setIsGuest(validGuest);
                     }
-                } else {
-                    // 2. Fallback to Guest Mode check
-                    const guestCheckStart = Date.now();
-                    const validGuest = checkGuestMode();
-                    trackPerformance('Guest mode check', guestCheckStart);
-                    if (mounted) setIsGuest(validGuest);
                 }
             } catch (error) {
                 console.error('Auth initialization error:', error);
-                // Fallback to Guest Mode on error
-                if (mounted) {
-                    const validGuest = checkGuestMode();
-                    setIsGuest(validGuest);
-                }
             } finally {
                 if (mounted) {
                     setIsLoading(false);
-                    clearTimeout(emergencyTimeout);
-                    trackPerformance('Total auth initialization', initStart);
                 }
             }
-        }
+        };
+
 
         initializeAuth();
 
-        // 3. Listen for Auth Changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: string, newSession: Session | null) => {
+        // 2. Listen for Auth Changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, newSession: Session | null) => {
             if (!mounted) return;
+            console.log('🔐 Auth State Changed:', event);
 
             setSession(newSession);
             setUser(newSession?.user ?? null);
-
+            
             if (newSession?.user) {
-                setIsGuest(false); // Logged in users are not guests
+                setIsGuest(false);
                 const adminStatus = await checkIsAdmin(newSession.user);
                 if (mounted) setIsAdmin(adminStatus);
             } else {
                 setIsAdmin(false);
-                // Re-check guest mode on logout
-                const validGuest = checkGuestMode();
-                if (mounted) setIsGuest(validGuest);
+                 if (event === 'SIGNED_OUT') {
+                    const validGuest = checkGuestMode();
+                    if(mounted) setIsGuest(validGuest);
+                 }
             }
 
-            setIsLoading(false);
+            // Ensure loading is false only after all state updates are complete
+            if (mounted) setIsLoading(false); 
         });
 
         return () => {
             mounted = false;
-            clearTimeout(emergencyTimeout);
             subscription.unsubscribe();
         };
     }, []);
 
     const logout = async () => {
         setIsLoading(true);
-        await supabase.auth.signOut();
-        // Clear guest mode too just in case of mixed state
-        setIsGuest(false);
-        setIsAdmin(false);
-        setUser(null);
-        setSession(null);
-        setIsLoading(false);
+        try {
+            await supabase.auth.signOut();
+            setIsGuest(false);
+            setIsAdmin(false);
+            setUser(null);
+            setSession(null);
+            // Close guest mode
+            localStorage.removeItem(GUEST_MODE_KEY);
+            localStorage.removeItem(GUEST_TIMESTAMP_KEY);
+        } catch (error) {
+            console.error('Logout error:', error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const enterGuestMode = () => {

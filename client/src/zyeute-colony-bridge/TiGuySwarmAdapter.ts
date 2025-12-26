@@ -219,27 +219,20 @@ export class TiGuySwarmAdapter {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
     
-    // Auth header is optional (server handles optionalAuth)
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    };
-    
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch('/api/tiguy/completion', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ prompt, history })
+    // Call Supabase Edge Function 'ti-guy-chat'
+    const { data, error } = await supabase.functions.invoke('ti-guy-chat', {
+        body: { 
+            message: prompt, 
+            history: history,
+            mode: 'chat' // Explicitly set mode
+        }
     });
 
-    if (!response.ok) {
-        throw new Error(`Server API error: ${response.statusText}`);
+    if (error) {
+        throw new Error(`Edge Function error: ${error.message}`);
     }
 
-    const data = await response.json();
-    return data.content || "Ouin, j'ai rien reçu.";
+    return data.response || data.content || "Ouin, j'ai rien reçu.";
   }
 
   /**
@@ -252,11 +245,11 @@ export class TiGuySwarmAdapter {
   } {
     return {
       deepSeek: {
-        state: deepSeekCircuit.getState(),
+        state: deepSeekCircuit.getState() as string,
         failures: deepSeekCircuit.getStats().failures
       },
       swarm: {
-        state: swarmCircuit.getState(),
+        state: swarmCircuit.getState() as string,
         failures: swarmCircuit.getStats().failures
       },
       mode: this.useLocalJoualBee ? 'local' : 'api'

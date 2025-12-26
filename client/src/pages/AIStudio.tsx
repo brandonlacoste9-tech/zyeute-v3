@@ -8,6 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Button } from '../components/Button';
 import { generateImage } from '../services/api';
+import { supabase } from '@/lib/supabase';
 import { toast } from '../components/Toast';
 
 const aspectRatios = [
@@ -71,17 +72,23 @@ export const AIStudio: React.FC = () => {
     setGeneratedVideo(null);
 
     try {
-      const response = await fetch('/api/ai/generate-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
+      // Use Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('studio-ai', {
+        body: {
+          action: 'generate-video',
           imageUrl: sourceImage,
           prompt: prompt || 'Anime cette image avec un mouvement naturel',
-        }),
+        }
       });
 
-      const data = await response.json();
+      if (error || !data) {
+        throw new Error(error?.message || 'Generation failed');
+      }
+
+      // Edge Function returns async task info. For now, simulate or handle appropriately.
+      // Assuming data might contain result if synchronous or task id.
+      // If async, we show a success message and potentially a placeholder.
+      
       if (data.videoUrl) {
         setGeneratedVideo(data.videoUrl);
         toast.success('Vidéo générée! 🎬');

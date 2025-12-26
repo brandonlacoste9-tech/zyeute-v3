@@ -105,7 +105,7 @@ const LazyLoadFallback: React.FC = () => (
 // Protected Route Component - Uses centralized AuthContext
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
-
+  
   if (isLoading) {
     return <LoadingScreen message="Chargement de Zyeuté..." />;
   }

@@ -148,7 +148,7 @@ export const ContinuousFeed: React.FC<ContinuousFeedProps> = ({ className, onVid
     // Actions
     const handleFireToggle = useCallback(async (postId: string, _currentFire: number) => {
         const user = await getCurrentUser();
-        if (user) togglePostFire(postId, user.id).catch(console.error);
+        if (user) togglePostFire(postId).catch(console.error);
     }, []);
 
     const handleShare = useCallback((postId: string) => {

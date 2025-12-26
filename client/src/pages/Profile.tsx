@@ -107,7 +107,7 @@ export const Profile: React.FC = () => {
           }
         } else {
           // Regular profile lookup by username
-          const profileUser = await getUserProfile(slug || '', currentUser?.id);
+          const profileUser = await getUserProfile(slug || '');
           if (profileUser) {
             setUser(profileUser);
             setError(null);

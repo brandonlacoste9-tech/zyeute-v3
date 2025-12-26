@@ -1,410 +1,330 @@
 /**
- * Centralized API Service for Zyeuté
- * All data fetching functions call the Express backend
+ * Centralized API Service for Zyeuté (Supabase Native)
+ * Replaces Express backend calls with direct Supabase SDK interactions
  */
 
 import { logger } from '@/lib/logger';
 import type { Post, User, Story } from '@/types';
+import { supabase } from '@/lib/supabase';
 
 const apiLogger = logger.withContext('API');
 
-import { supabase } from '@/lib/supabase';
-
-// Base API call helper
-async function apiCall<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<{ data: T | null; error: string | null }> {
-  try {
-    // Get current session token
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-
-    // Prepare headers with Authorization if token exists
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...((options.headers as Record<string, string>) || {}),
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`/api${endpoint}`, {
-      ...options,
-      headers,
-      credentials: 'include', // Include cookies for session
-    });
-
-    // Handle non-OK responses or non-JSON responses
-    if (!response.ok) {
-      let errorMsg = 'Request failed';
-      try {
-        const errorData = await response.json();
-        errorMsg = errorData.error || errorMsg;
-      } catch (e) {
-        // Fallback to text if JSON parse fails (e.g. 500 server crash with text body)
-        // This prevents "Unexpected token" crashes in the client
-        try {
-            const text = await response.text();
-            apiLogger.error(`API Error (${response.status}):`, text);
-            errorMsg = `Server Error (${response.status})`;
-        } catch (readError) {
-            errorMsg = `Network Error (${response.status})`;
-        }
-      }
-      return { data: null, error: errorMsg };
-    }
-
-    const data = await response.json();
-
-    return { data, error: null };
-  } catch (error) {
-    apiLogger.error(`API call failed: ${endpoint}`, error);
-    return { data: null, error: 'Network error' };
-  }
-}
-
 // ============ AUTH FUNCTIONS ============
+// Most Auth is handled directly by AuthContext/useAuth via supabase.auth
+// These helpers remain for legacy compatibility or specific utility needs
 
 export async function getCurrentUser(): Promise<User | null> {
-  const { data, error } = await apiCall<{ user: User | null }>('/auth/me');
-  if (error || !data) return null;
-  return data.user;
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return null;
+  // Fetch full profile
+  return getUserProfile(user.id);
 }
 
-export async function login(email: string, password: string): Promise<{ user: User | null; error: string | null }> {
-  const { data, error } = await apiCall<{ user: User }>('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
-
-  if (error) return { user: null, error };
-  return { user: data?.user || null, error: null };
+export async function login(email: string, password: string) {
+  return supabase.auth.signInWithPassword({ email, password });
 }
 
-export async function signup(
-  email: string,
-  password: string,
-  username: string,
-  displayName?: string
-): Promise<{ user: User | null; error: string | null }> {
-  const { data, error } = await apiCall<{ user: User }>('/auth/signup', {
-    method: 'POST',
-    body: JSON.stringify({ email, password, username, displayName }),
+export async function signup(email: string, password: string, username: string, fullName?: string) {
+  return supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { username, full_name: fullName }
+    }
   });
-
-  if (error) return { user: null, error };
-  return { user: data?.user || null, error: null };
 }
 
 export async function logout(): Promise<boolean> {
-  const { error } = await apiCall('/auth/logout', { method: 'POST' });
+  const { error } = await supabase.auth.signOut();
   return !error;
 }
 
 // ============ USER FUNCTIONS ============
 
-export async function getUserProfile(
-  usernameOrId: string,
-  currentUserId?: string
-): Promise<User | null> {
-  const endpoint = usernameOrId === 'me' ? '/auth/me' : `/users/${usernameOrId}`;
-  const { data, error } = await apiCall<{ user: User }>(endpoint);
+export async function getUserProfile(usernameOrId: string): Promise<User | null> {
+  let query = supabase.from('user_profiles').select('*');
+  
+  // Determine if input is UUID or Username
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(usernameOrId);
+  
+  if (isUuid || usernameOrId === 'me') {
+      const id = usernameOrId === 'me' ? (await supabase.auth.getUser()).data.user?.id : usernameOrId;
+      if(!id) return null;
+      query = query.eq('id', id);
+  } else {
+      query = query.eq('username', usernameOrId);
+  }
 
-  if (error || !data) return null;
-  return data.user;
+  const { data, error } = await query.single();
+  
+  if (error || !data) {
+     apiLogger.warn('Profile fetch failed', error);
+     return null;
+  }
+  return mapBackendUser(data);
 }
 
 export async function updateProfile(updates: Partial<User>): Promise<User | null> {
-  const { data, error } = await apiCall<{ user: User }>('/users/me', {
-    method: 'PATCH',
-    body: JSON.stringify(updates),
-  });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const dbUpdates = {
+    display_name: updates.display_name,
+    bio: updates.bio,
+    avatar_url: updates.avatar_url,
+    region: updates.region,
+    updated_at: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .update(dbUpdates)
+    .eq('id', user.id)
+    .select()
+    .single();
 
   if (error || !data) return null;
-  return data.user;
+  return mapBackendUser(data);
 }
 
 // ============ POSTS FUNCTIONS ============
 
 export async function getFeedPosts(page: number = 0, limit: number = 20): Promise<Post[]> {
-  const { data, error } = await apiCall<{ posts: Post[] }>(
-    `/feed?page=${page}&limit=${limit}`
-  );
+  const from = page * limit;
+  const to = from + limit - 1;
 
-  if (error || !data) {
-    apiLogger.warn('No feed data returned');
+  // Fetch Public Posts + Posts from Followed Users (Requires complex RLS or View)
+  // For V1 RLS: We fetch 'public' visibility posts.
+  const { data, error } = await supabase
+    .from('publications')
+    .select('*, user:user_profiles(*)')
+    .eq('visibilite', 'public')
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (error) {
+    apiLogger.warn('Feed fetch failed', error);
     return [];
   }
-
-  // Map backend response to frontend Post type
-  return (data.posts || []).map(mapBackendPost);
+  return (data || []).map(mapBackendPost);
 }
 
 export async function getExplorePosts(page: number = 0, limit: number = 20): Promise<Post[]> {
-  const { data, error } = await apiCall<{ posts: Post[] }>(
-    `/explore?page=${page}&limit=${limit}`
-  );
+  // Logic allows showing trending or random high-quality posts
+   const from = page * limit;
+   const to = from + limit - 1;
 
-  if (error || !data) return [];
-  return (data.posts || []).map(mapBackendPost);
+   const { data, error } = await supabase
+    .from('publications')
+    .select('*, user:user_profiles(*)')
+    .eq('visibilite', 'public')
+    .gt('reactions_count', 0) // Simple 'trending' filter
+    .order('reactions_count', { ascending: false })
+    .range(from, to);
+
+  if (error) return [];
+  return (data || []).map(mapBackendPost);
 }
 
 export async function getPostById(postId: string): Promise<Post | null> {
-  const { data, error } = await apiCall<{ post: Post }>(`/posts/${postId}`);
+  const { data, error } = await supabase
+    .from('publications')
+    .select('*, user:user_profiles(*)')
+    .eq('id', postId)
+    .single();
+
   if (error || !data) return null;
-  return mapBackendPost(data.post);
+  return mapBackendPost(data);
 }
 
 export async function getUserPosts(userId: string): Promise<Post[]> {
-  // Get username from user ID first if needed
-  const { data, error } = await apiCall<{ posts: Post[] }>(`/users/${userId}/posts`);
-  if (error || !data) return [];
-  return (data.posts || []).map(mapBackendPost);
+  const { data, error } = await supabase
+    .from('publications')
+    .select('*, user:user_profiles(*)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) return [];
+  return (data || []).map(mapBackendPost);
 }
 
-export async function createPost(postData: {
-  type: string;
-  mediaUrl: string;
-  thumbnailUrl?: string;
-  caption?: string;
-  hashtags?: string[];
-  region?: string;
-  visibility?: string;
-}): Promise<Post | null> {
-  const { data, error } = await apiCall<{ post: Post }>('/posts', {
-    method: 'POST',
-    body: JSON.stringify(postData),
-  });
+export async function createPost(postData: any): Promise<Post | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if(!user) return null;
 
-  if (error || !data) return null;
-  return mapBackendPost(data.post);
+    const { data, error } = await supabase
+        .from('publications')
+        .insert({
+            user_id: user.id,
+            media_url: postData.mediaUrl,
+            caption: postData.caption,
+            visibilite: postData.visibility || 'public',
+            region_id: postData.region,
+            content: 'Media upload', // Required field
+            created_at: new Date().toISOString()
+        })
+        .select('*, user:user_profiles(*)')
+        .single();
+
+    if (error || !data) {
+        apiLogger.error("Create Post Failed", error);
+        return null;
+    }
+    return mapBackendPost(data);
 }
 
 export async function deletePost(postId: string): Promise<boolean> {
-  const { error } = await apiCall(`/posts/${postId}`, { method: 'DELETE' });
+  const { error } = await supabase.from('publications').delete().eq('id', postId);
   return !error;
 }
 
-// ============ REACTIONS FUNCTIONS ============
-
-export async function togglePostFire(postId: string, userId: string): Promise<boolean> {
-  const { data, error } = await apiCall<{ added: boolean }>(`/posts/${postId}/fire`, {
-    method: 'POST',
-  });
-  return !error;
+export async function getStories(userId?: string): Promise<Array<{ user: User; story?: Story; isViewed?: boolean }>> {
+    // TODO: Implement actual stories logic when table exists.
+    // For now return empty array or mock if needed.
+    // If table 'stories' exists:
+    /*
+    const { data } = await supabase.from('stories').select('*, user:user_profiles(*)').gt('expires_at', new Date().toISOString());
+    return (data || []).map(s => ({
+        user: mapBackendUser(s.user),
+        story: s,
+        isViewed: false
+    }));
+    */
+    return [];
 }
 
-export async function toggleCommentFire(commentId: string): Promise<boolean> {
-  const { error } = await apiCall(`/comments/${commentId}/fire`, { method: 'POST' });
-  return !error;
+// ============ REACTIONS & COMMENTS ============
+
+export async function togglePostFire(postId: string): Promise<boolean> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if(!user) return false;
+
+    // Check if exists
+    const { data: existing } = await supabase
+        .from('reactions')
+        .select('id')
+        .eq('publication_id', postId)
+        .eq('user_id', user.id)
+        .single();
+
+    if (existing) {
+        const { error } = await supabase.from('reactions').delete().eq('id', existing.id);
+        return !error;
+    } else {
+        const { error } = await supabase.from('reactions').insert({
+            publication_id: postId,
+            user_id: user.id,
+            type: 'fire'
+        });
+        return !error;
+    }
 }
 
-// ============ COMMENTS FUNCTIONS ============
+export async function checkFollowing(followerId: string, followingId: string): Promise<boolean> {
+    const { data, error } = await supabase
+        .from('follows')
+        .select('*')
+        .eq('follower_id', followerId)
+        .eq('following_id', followingId)
+        .single();
+    
+    return !!data && !error;
+}
+
+export async function toggleFollow(followerId: string, followingId: string, isFollowing: boolean): Promise<boolean> {
+    if (isFollowing) {
+        const { error } = await supabase
+            .from('follows')
+            .delete()
+            .eq('follower_id', followerId)
+            .eq('following_id', followingId);
+        return !error;
+    } else {
+        const { error } = await supabase
+            .from('follows')
+            .insert({
+                follower_id: followerId,
+                following_id: followingId
+            });
+        return !error;
+    }
+}
 
 export async function getPostComments(postId: string): Promise<any[]> {
-  const { data, error } = await apiCall<{ comments: any[] }>(`/posts/${postId}/comments`);
-  if (error || !data) return [];
-  return data.comments || [];
+    const { data, error } = await supabase
+        .from('commentaires')
+        .select('*, user:user_profiles(*)')
+        .eq('publication_id', postId)
+        .order('created_at', { ascending: true });
+    
+    if(error) return [];
+    return data || [];
 }
 
 export async function addComment(postId: string, content: string): Promise<any | null> {
-  const { data, error } = await apiCall<{ comment: any }>(`/posts/${postId}/comments`, {
-    method: 'POST',
-    body: JSON.stringify({ content }),
-  });
+    const { data: { user } } = await supabase.auth.getUser();
+    if(!user) return null;
 
-  if (error || !data) return null;
-  return data.comment;
+    const { data, error } = await supabase
+        .from('commentaires')
+        .insert({
+            publication_id: postId,
+            user_id: user.id,
+            content: content
+        })
+        .select('*, user:user_profiles(*)')
+        .single();
+
+    if(error) return null;
+    return data;
 }
 
-export async function deleteComment(commentId: string): Promise<boolean> {
-  const { error } = await apiCall(`/comments/${commentId}`, { method: 'DELETE' });
-  return !error;
-}
-
-// ============ FOLLOWS FUNCTIONS ============
-
-export async function checkFollowing(followerId: string, followingId: string): Promise<boolean> {
-  // This is determined by the isFollowing field returned with user data
-  return false;
-}
-
-export async function toggleFollow(
-  followerId: string,
-  followingId: string,
-  isFollowing: boolean
-): Promise<boolean> {
-  const method = isFollowing ? 'DELETE' : 'POST';
-  const { error } = await apiCall(`/users/${followingId}/follow`, { method });
-  return !error;
-}
-
-export async function followUser(userId: string): Promise<boolean> {
-  const { error } = await apiCall(`/users/${userId}/follow`, { method: 'POST' });
-  return !error;
-}
-
-export async function unfollowUser(userId: string): Promise<boolean> {
-  const { error } = await apiCall(`/users/${userId}/follow`, { method: 'DELETE' });
-  return !error;
-}
-
-export async function getFollowers(userId: string): Promise<User[]> {
-  const { data, error } = await apiCall<{ followers: User[] }>(`/users/${userId}/followers`);
-  if (error || !data) return [];
-  return data.followers || [];
-}
-
-export async function getFollowing(userId: string): Promise<User[]> {
-  const { data, error } = await apiCall<{ following: User[] }>(`/users/${userId}/following`);
-  if (error || !data) return [];
-  return data.following || [];
-}
-
-// ============ STORIES FUNCTIONS ============
-
-export async function getStories(
-  currentUserId?: string
-): Promise<Array<{ user: User; story?: Story; isViewed?: boolean }>> {
-  const { data, error } = await apiCall<{ stories: any[] }>('/stories');
-
-  if (error || !data) return [];
-
-  // Group stories by user
-  const storyMap = new Map<string, { user: User; story: Story; isViewed: boolean }>();
-
-  (data.stories || []).forEach((story: any) => {
-    if (story.user && !storyMap.has(story.user.id)) {
-      storyMap.set(story.user.id, {
-        user: mapBackendUser(story.user),
-        story: mapBackendStory(story),
-        isViewed: story.isViewed || false,
-      });
-    }
-  });
-
-  const storyList = Array.from(storyMap.values());
-
-  // Prioritize current user's story
-  if (currentUserId) {
-    const userStory = storyList.find((s) => s.user.id === currentUserId);
-    if (userStory) {
-      return [userStory, ...storyList.filter((s) => s.user.id !== currentUserId)];
-    }
-  }
-
-  return storyList;
-}
-
-export async function createStory(storyData: {
-  mediaUrl: string;
-  mediaType: string;
-  caption?: string;
-}): Promise<Story | null> {
-  const { data, error } = await apiCall<{ story: Story }>('/stories', {
-    method: 'POST',
-    body: JSON.stringify(storyData),
-  });
-
-  if (error || !data) return null;
-  return data.story;
-}
-
-export async function markStoryViewed(storyId: string): Promise<boolean> {
-  const { error } = await apiCall(`/stories/${storyId}/view`, { method: 'POST' });
-  return !error;
-}
-
-// ============ NOTIFICATIONS FUNCTIONS ============
-
-export async function getNotifications(): Promise<any[]> {
-  const { data, error } = await apiCall<{ notifications: any[] }>('/notifications');
-  if (error || !data) return [];
-  return data.notifications || [];
-}
-
-export async function markNotificationRead(notificationId: string): Promise<boolean> {
-  const { error } = await apiCall(`/notifications/${notificationId}/read`, { method: 'PATCH' });
-  return !error;
-}
-
-export async function markAllNotificationsRead(): Promise<boolean> {
-  const { error } = await apiCall('/notifications/read-all', { method: 'POST' });
-  return !error;
-}
-
-// ============ AI FUNCTIONS ============
+// ============ AI FUNCTIONS (EDGE FUNCTIONS) ============
 
 export async function generateImage(prompt: string, aspectRatio: string = "1:1"): Promise<{ imageUrl: string; prompt: string } | null> {
-  const { data, error } = await apiCall<{ imageUrl: string; prompt: string }>('/ai/generate-image', {
-    method: 'POST',
-    body: JSON.stringify({ prompt, aspectRatio }),
-  });
-
-  if (error || !data) return null;
-  return data;
+    try {
+        const result = await import('./mediaAgent').then(m => m.mediaAgent.generateCinematicMedia({
+            prompt,
+            aspectRatio: aspectRatio as any,
+            style: 'cinematic'
+        }));
+        
+        return {
+            imageUrl: result.url,
+            prompt: prompt
+        };
+    } catch (error) {
+        apiLogger.error('AI Generation Failed via MediaAgent', error);
+        return null;
+    }
 }
 
-// ============ HELPER FUNCTIONS ============
-
-// Map backend user fields (camelCase) to frontend fields (snake_case where needed)
-function mapBackendUser(user: any): User {
-  if (!user) return user;
-  return {
-    id: user.id,
-    username: user.username,
-    display_name: user.displayName || user.display_name || null,
-    bio: user.bio || null,
-    avatar_url: user.avatarUrl || user.avatar_url || null,
-    city: user.city || user.location || null,
-    region: user.region || null,
-    is_verified: user.isVerified || user.is_verified || false,
-    coins: user.coins || 0,
-    fire_score: user.fireScore || user.fire_score || 0,
-    created_at: user.createdAt || user.created_at || new Date().toISOString(),
-    updated_at: user.updatedAt || user.updated_at || new Date().toISOString(),
-    followers_count: user.followersCount || user.followers_count || 0,
-    following_count: user.followingCount || user.following_count || 0,
-    posts_count: user.postsCount || user.posts_count || 0,
-    is_following: user.isFollowing || user.is_following || false,
-  } as User;
+// ============ MAPPERS (Adapting DB Columns to Frontend Types) ============
+function mapBackendUser(u: any): User {
+    if (!u) return u;
+    return {
+        id: u.id,
+        username: u.username,
+        display_name: u.display_name || u.displayName,
+        avatar_url: u.avatar_url || u.avatarUrl,
+        bio: u.bio,
+        is_verified: u.is_verified || false,
+        created_at: u.created_at,
+        // ... map other fields
+    } as User;
 }
 
-// Map backend post fields to frontend Post type
-function mapBackendPost(post: any): Post {
-  if (!post) return post;
-  return {
-    id: post.id,
-    user_id: post.userId || post.user_id,
-    type: post.type || 'photo',
-    media_url: post.mediaUrl || post.media_url || '',
-    caption: post.caption || null,
-    hashtags: post.hashtags || null,
-    region: post.region || null,
-    city: post.city || null,
-    fire_count: post.fireCount || post.fire_count || 0,
-    comment_count: post.commentCount || post.comment_count || 0,
-    created_at: post.createdAt || post.created_at || new Date().toISOString(),
-    is_fired: post.isFired || post.is_fired || false,
-    user: post.user ? mapBackendUser(post.user) : undefined,
-  } as Post;
-}
-
-// Map backend story fields
-function mapBackendStory(story: any): Story {
-  if (!story) return story;
-  const mediaType = story.mediaType || story.media_type || 'photo';
-  return {
-    id: story.id,
-    user_id: story.userId || story.user_id,
-    media_url: story.mediaUrl || story.media_url || '',
-    type: mediaType === 'video' ? 'video' : 'photo',
-    duration: story.duration || 5,
-    created_at: story.createdAt || story.created_at || new Date().toISOString(),
-    expires_at: story.expiresAt || story.expires_at || new Date().toISOString(),
-    is_viewed: story.isViewed || story.is_viewed || false,
-    user: story.user ? mapBackendUser(story.user) : undefined,
-  } as Story;
+function mapBackendPost(p: any): Post {
+    if (!p) return p;
+    return {
+        id: p.id,
+        user_id: p.user_id,
+        media_url: p.media_url || p.mediaUrl || p.original_url,
+        caption: p.caption,
+        fire_count: p.reactions_count || 0,
+        comment_count: p.comments_count || 0,
+        user: p.user ? mapBackendUser(p.user) : undefined,
+        created_at: p.created_at,
+        type: 'photo' // Default
+    } as Post;
 }

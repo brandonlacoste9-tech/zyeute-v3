@@ -375,7 +375,7 @@ export async function handleJoualBee(input: JoualBeeInput): Promise<JoualBeeOutp
 export function createJoualBeeAgent(): BeeAgent {
   return {
     id: `joual-bee-${Date.now()}`,
-    type: 'joual',
+    type: 'joual' as BeeType,
     name: 'JoualBee',
     status: 'idle',
     specialty: 'Quebec French Language & Culture'

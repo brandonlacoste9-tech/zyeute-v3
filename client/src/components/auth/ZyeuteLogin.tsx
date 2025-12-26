@@ -38,7 +38,7 @@ const ZyeuteLogin: React.FC = () => {
     try {
       const { data, error } = await signIn(email, password);
       if (error) {
-        const msg = error instanceof Error ? error.message : String(error);
+        const msg = error.message;
         console.error('Login error:', msg);
         alert('Erreur de connexion: ' + msg);
       } else {

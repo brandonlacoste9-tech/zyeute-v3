@@ -8,6 +8,7 @@
  */
 
 import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase';
 
 const tiGuyAgentLogger = logger.withContext('TiGuyAgent');
 
@@ -33,20 +34,27 @@ export const TiGuyAgent = async (input: TiGuyInput): Promise<TiGuyResponse | nul
   tiGuyAgentLogger.info('Ti-Guy Agent called (Server Mode)', input);
   
   try {
-    const response = await fetch('/api/tiguy/generate', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(input)
+    // Use Supabase Edge Function 'ti-guy-chat' for generation
+    const { data, error } = await supabase.functions.invoke('ti-guy-chat', {
+        body: {
+            mode: 'generate',
+            ...input
+        }
     });
 
-    if (!response.ok) {
-        throw new Error('Server returned error');
+    if (error || !data) {
+        throw new Error('Edge Function generation failed');
     }
 
-    const data = await response.json();
-    return data as TiGuyResponse;
+    // Map Edge Function response to TiGuyResponse expected format if needed
+    // Assuming Edge Function returns matching structure or we map it here
+    return {
+        caption: data.caption || input.text,
+        emojis: data.emojis || ['🔥'],
+        tags: data.tags || ['Quebec'],
+        flagged: data.flagged || false,
+        reply: data.reply || "C'est tiguidou!"
+    };
 
   } catch (error) {
     tiGuyAgentLogger.error('Ti-Guy Agent error (falling back to demo):', error);

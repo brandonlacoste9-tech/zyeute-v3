@@ -9,6 +9,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '../Button';
 import { cn } from '../../lib/utils';
 import tiGuyEmblem from '@assets/TI-GUY_NEW_SHARP_1765507001190.jpg';
+import { supabase } from '@/lib/supabase';
 
 interface Message {
   id: string;
@@ -93,14 +94,12 @@ export const TiGuy: React.FC = () => {
     setIsTyping(true);
 
     try {
-      // Use FREE scripted endpoint - NO AI COSTS!
-      const response = await fetch('/api/tiguy/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: messageText }),
+      // Use Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('ti-guy-chat', {
+        body: { message: messageText }
       });
 
-      const data = await response.json();
+      if (error) throw error;
       
       // Simulate slight delay for natural feel
       await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));

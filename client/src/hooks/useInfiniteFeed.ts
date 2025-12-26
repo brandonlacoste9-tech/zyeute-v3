@@ -8,6 +8,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
 import { useEffect } from 'react';
 import type { Post } from '@/types';
+import { supabase } from '@/lib/supabase'; // Updated import
 
 interface FeedResponse {
     posts: Post[];
@@ -30,23 +31,51 @@ export function useInfiniteFeed(feedType: FeedType = 'explore') {
     } = useInfiniteQuery<FeedResponse>({
         queryKey: ['feed-infinite', feedType],
         queryFn: async ({ pageParam }) => {
-            const params = new URLSearchParams({
-                limit: '20',
-                type: feedType,
-                ...(pageParam ? { cursor: pageParam as string } : {}),
-            });
+            const limit = 20;
+            
+            // Build query
+            let query = supabase
+                .from('publications')
+                .select(`
+                    *,
+                    user:user_id (
+                        username,
+                        avatar_url,
+                        is_verified
+                    ),
+                    comments:comments (count),
+                    likes:likes (count)
+                `)
+                .order('created_at', { ascending: false })
+                .limit(limit);
 
-            const response = await fetch(`/api/feed/infinite?${params}`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch feed');
+            // Apply filter based on feed type (if applicable)
+            if (feedType === 'explore') {
+                 // For explore, we might randomly order or filter, but for now standard feed
             }
 
-            return response.json();
+            // Apply cursor pagination
+            if (pageParam) {
+                query = query.lt('created_at', pageParam);
+            }
+
+            const { data: rawPosts, error } = await query;
+
+            if (error) {
+                throw new Error(error.message);
+            }
+
+            const posts = rawPosts as unknown as Post[];
+
+            // Determine next cursor
+            const nextCursor = posts.length === limit ? posts[posts.length - 1].created_at : null;
+
+            return {
+                posts,
+                nextCursor,
+                hasMore: !!nextCursor,
+                feedType
+            };
         },
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: null,
@@ -95,23 +124,40 @@ export function useInfiniteFeedManual(feedType: FeedType = 'explore') {
     } = useInfiniteQuery<FeedResponse>({
         queryKey: ['feed-infinite-manual', feedType],
         queryFn: async ({ pageParam }) => {
-            const params = new URLSearchParams({
-                limit: '20',
-                type: feedType,
-                ...(pageParam ? { cursor: pageParam as string } : {}),
-            });
+            const limit = 20;
 
-            const response = await fetch(`/api/feed/infinite?${params}`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
-                },
-            });
+            let query = supabase
+                .from('publications')
+                 .select(`
+                    *,
+                    user:user_id (
+                        username,
+                        avatar_url,
+                        is_verified
+                    ),
+                    comments:comments (count),
+                    likes:likes (count)
+                `)
+                .order('created_at', { ascending: false })
+                .limit(limit);
 
-            if (!response.ok) {
-                throw new Error('Failed to fetch feed');
+             if (pageParam) {
+                query = query.lt('created_at', pageParam);
             }
 
-            return response.json();
+            const { data: rawPosts, error } = await query;
+
+            if (error) throw new Error(error.message);
+
+            const posts = rawPosts as unknown as Post[];
+            const nextCursor = posts.length === limit ? posts[posts.length - 1].created_at : null;
+
+            return {
+                posts,
+                nextCursor,
+                hasMore: !!nextCursor,
+                feedType
+            };
         },
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: null,

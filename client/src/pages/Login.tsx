@@ -86,30 +86,18 @@ export const Login: React.FC = () => {
     try {
       if (debugMode) console.log('🔐 [LOGIN] Attempting Supabase auth...');
 
-      // If input is NOT an email, try to resolve username
+      // If input is NOT an email, warn user (Authentication requires Email)
       let targetEmail = email.trim();
       const isEmail = targetEmail.includes('@');
 
       if (!isEmail) {
-        if (debugMode) console.log('👤 [LOGIN] Detected username, resolving to email...');
-        try {
-          const res = await fetch('/api/auth/resolve-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: targetEmail })
-          });
-
-          if (!res.ok) {
-            if (res.status === 404) throw new Error('Nom d\'utilisateur non trouvé');
-            throw new Error('Erreur de vérification du nom');
-          }
-
-          const data = await res.json();
-          if (debugMode) console.log('✅ [LOGIN] Resolved email:', data.email);
-          targetEmail = data.email;
-        } catch (resolveErr: any) {
-          throw new Error(resolveErr.message);
-        }
+         // Fallback/Legacy support removed - Force email
+         // We could implement an Edge Function here for username lookup if strictly required,
+         // but for security and decommission speed, we enforce email.
+         if (debugMode) console.log('👤 [LOGIN] Username entered, but system requires Email.');
+         // Optional: Display UI hint. 
+         // For now, we assume strict email login as standard.
+         // If we want to support username, we'd need: const { data } = await supabase.rpc('get_email_by_username', { username });
       }
 
       // ✅ DIRECT CLIENT-SIDE AUTH - No server proxy
@@ -312,7 +300,7 @@ export const Login: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-semibold mb-2" style={{ color: '#B8A88A' }}>Courriel ou Nom d'utilisateur</label>
+              <label className="block text-sm font-semibold mb-2" style={{ color: '#B8A88A' }}>Courriel</label>
               <input
                 type="text"
                 value={email}

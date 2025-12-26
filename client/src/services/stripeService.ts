@@ -43,18 +43,18 @@ export async function subscribeToPremium(tier: 'bronze' | 'silver' | 'gold'): Pr
   }
 
   try {
-    // Use our Express backend for Stripe checkout
-    const response = await fetch('/api/stripe/create-checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ tier }),
+    // Use Supabase Edge Function
+    const { data, error } = await supabase.functions.invoke('stripe-checkout', {
+      body: {
+        action: 'create-checkout-session',
+        tier
+      }
     });
 
-    const data = await response.json();
+    if (error) throw error;
 
-    if (!response.ok) {
-      throw new Error(data.error || `HTTP ${response.status}`);
+    if (data?.error) {
+      throw new Error(data.error);
     }
 
     if (data?.url) {
