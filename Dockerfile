@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install ALL dependencies (including devDependencies for build)
+# Fix: Ensure linux binaries (rollup) are installed by not omitting optional deps
 RUN npm install
 # Copy source
 COPY . .
