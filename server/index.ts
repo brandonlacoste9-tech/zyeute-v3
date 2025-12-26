@@ -102,11 +102,28 @@ const initRoutes = async () => {
     // importantly only setup vite in development and after
     // setting up all the other routes so the catch-all route
     // doesn't interfere with the other routes
-    if (process.env.NODE_ENV === "production") {
-        serveStatic(app);
-    } else {
+    // --- INTELLIGENT STARTUP STRATEGY ---
+    // If explicitly production, OR if we try to load Vite and it fails, we serve static assets.
+    let startedInDev = false;
+
+    if (process.env.NODE_ENV !== "production") {
+      try {
+        console.log("Attempting to start in Development mode...");
+        // Dynamic import to prevent build-time bundling of Vite
         const { setupVite } = await import("./vite.js");
         await setupVite(httpServer, app);
+        startedInDev = true;
+        console.log("✅ Custom Vite server initialized");
+      } catch (err) {
+        console.warn("⚠️  Failed to start Vite server (likely running in Production without NODE_ENV=production).");
+        console.warn("⚠️  Falling back to Static File Serving.");
+        // Fall through to production logic below
+      }
+    }
+
+    if (!startedInDev) {
+      console.log("🚀 Starting in PRODUCTION mode (Static Serving)");
+      serveStatic(app);
     }
 
     routesInitialized = true;
