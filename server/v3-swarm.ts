@@ -8,19 +8,8 @@
  * - Moderation loop with max 3 attempts and fallback content
  */
 
-import OpenAI from "openai";
-import { traceExternalAPI, addSpanAttributes } from "./tracer.js";
-
-// Constants for production reliability
-const MAX_RETRIES = 3;
-const BASE_TIMEOUT_MS = 30000; // 30 seconds
-const MOD_MAX_ATTEMPTS = 3;
-
-const deepseek = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY || "not-configured",
-  baseURL: "https://api.deepseek.com",
-  timeout: BASE_TIMEOUT_MS,
-});
+// OpenAI SDK removed in favor of native fetch to avoid "Missing credentials" errors
+// const deepseek = new OpenAI({ ... });
 
 // Exponential backoff helper
 async function sleep(ms: number): Promise<void> {
@@ -226,6 +215,26 @@ const FALLBACK_FEED_ITEM: V3FeedItem = {
 
 // ============ V3 CLIENT FUNCTIONS ============
 
+// Type definitions for DeepSeek API
+interface DeepSeekMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+interface DeepSeekResponse {
+  id: string;
+  choices: Array<{
+    index: number;
+    message: DeepSeekMessage;
+    finish_reason: string;
+  }>;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
 async function callV3(systemPrompt: string, userMessage: string, parseJson = true): Promise<string | Record<string, unknown>> {
   if (!process.env.DEEPSEEK_API_KEY) {
     throw new Error("DeepSeek API key not configured");
@@ -241,21 +250,34 @@ async function callV3(systemPrompt: string, userMessage: string, parseJson = tru
     });
 
     return withRetry(async () => {
-      const completion = await deepseek.chat.completions.create({
-        model: "deepseek-chat",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage }
-        ],
-        max_tokens: 1024,
-        temperature: 0.7,
+      const response = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.DEEPSEEK_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage }
+          ],
+          max_tokens: 1024,
+          temperature: 0.7,
+        })
       });
 
-      const content = completion.choices[0]?.message?.content || "";
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`DeepSeek API error (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json() as DeepSeekResponse;
+      const content = data.choices[0]?.message?.content || "";
 
       span.setAttributes({
         "ai.response_length": content.length,
-        "ai.finish_reason": completion.choices[0]?.finish_reason || "unknown",
+        "ai.finish_reason": data.choices[0]?.finish_reason || "unknown",
       });
 
       if (parseJson) {
@@ -333,15 +355,29 @@ export async function v3TiGuyChat(userMessage: string, conversationHistory?: Arr
     // 4. Add current user message
     messages.push({ role: "user", content: userMessage });
 
-    // 5. Call LLM
-    const completion = await deepseek.chat.completions.create({
-      model: "deepseek-chat",
-      messages,
-      max_tokens: 512,
-      temperature: 0.8,
+    // 5. Call LLM (using native fetch)
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.DEEPSEEK_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages,
+        max_tokens: 512,
+        temperature: 0.8,
+      })
     });
 
-    return completion.choices[0]?.message?.content || "Ouin, j'ai eu un bug là. Réessaie!";
+    if (!response.ok) {
+       console.error("DeepSeek TI-GUY error:", await response.statusText);
+       return "Ouin, j'ai eu un bug de connexion là. Réessaie!";
+    }
+
+    const data = await response.json() as DeepSeekResponse;
+    return data.choices[0]?.message?.content || "Ouin, j'ai eu un bug là. Réessaie!";
+
   } catch (error: unknown) {
     console.error("Ti-Guy chat error:", error);
     return "Ayoye, j'ai eu un problème technique là! Réessaie tantôt. 🦫";
