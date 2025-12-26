@@ -11,16 +11,13 @@
  * Uses Resend integration for email delivery
  */
 
-import OpenAI from 'openai';
+// import OpenAI from 'openai';
 import { storage } from './storage.js';
 import { sendEmail } from './resend-client.js';
 import { renderEmail, EmailType as ReactEmailType } from './email-templates.js';
 
-// Initialize DeepSeek client
-const deepseek = new OpenAI({
-  baseURL: 'https://api.deepseek.com',
-  apiKey: process.env.DEEPSEEK_API_KEY,
-});
+// OpenAI SDK removed in favor of native fetch to avoid "Missing credentials" errors
+// const deepseek = new OpenAI({ ... });
 
 // Email automation configuration
 export const EMAIL_CONFIG = {
@@ -69,6 +66,20 @@ export interface QueuedEmail {
 // In-memory email queue (in production, use database)
 const emailQueue: QueuedEmail[] = [];
 
+// Type definitions for DeepSeek API
+interface DeepSeekMessage {
+    role: "system" | "user";
+    content: string;
+}
+  
+interface DeepSeekResponse {
+    choices: Array<{
+      message: {
+        content: string;
+      };
+    }>;
+}
+
 /**
  * Generate personalized email content using DeepSeek in joual voice
  */
@@ -77,6 +88,12 @@ export async function generatePersonalizedContent(
   username: string,
   context?: Record<string, unknown>
 ): Promise<{ subject: string; content: string }> {
+  
+    if (!process.env.DEEPSEEK_API_KEY) {
+        console.warn("DEEPSEEK_API_KEY not configured, using fallback content");
+        return getFallbackContent(emailType, username);
+    }
+
   const systemPrompt = `Tu es Ti-Guy, le castor mascotte de Zyeuté, l'app sociale du Québec.
 Tu écris des courriels dans un style joual authentique et chaleureux:
 - Utilise "tu" (informel)
@@ -128,17 +145,29 @@ Invite-les à revenir.`,
   };
 
   try {
-    const response = await deepseek.chat.completions.create({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompts[emailType] + '\n\nRéponds en JSON: {"subject": "...", "content": "..."}' },
-      ],
-      temperature: 0.8,
-      max_tokens: 1000,
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.DEEPSEEK_API_KEY}`
+        },
+        body: JSON.stringify({
+            model: "deepseek-chat",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: prompts[emailType] + '\n\nRéponds en JSON: {"subject": "...", "content": "..."}' }
+            ],
+            temperature: 0.8,
+            max_tokens: 1000,
+        })
     });
 
-    const text = response.choices[0]?.message?.content || '';
+    if (!response.ok) {
+        throw new Error(`DeepSeek API error: ${response.statusText}`);
+    }
+
+    const data = await response.json() as DeepSeekResponse;
+    const text = data.choices[0]?.message?.content || '';
     
     // Parse JSON response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
