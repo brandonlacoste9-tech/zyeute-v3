@@ -13,7 +13,7 @@ if (!isSupabaseConfigured) {
 }
 
 // Create the Supabase admin client only if properly configured
-let supabaseAdmin: SupabaseClient | null = null;
+export let supabaseAdmin: SupabaseClient | null = null;
 
 if (isSupabaseConfigured) {
   supabaseAdmin = createClient(
@@ -38,10 +38,13 @@ export async function verifyAuthToken(token: string): Promise<string | null> {
     console.warn("Auth verification skipped: Supabase not configured");
     return null;
   }
+  
+  // Capture client in local const to satisfy TS inside callback
+  const client = supabaseAdmin;
 
   return traceSupabase("auth.getUser", { "auth.method": "jwt_verification" }, async (span) => {
     try {
-      const { data, error } = await supabaseAdmin.auth.getUser(token);
+      const { data, error } = await client.auth.getUser(token);
 
       if (error || !data.user) {
         if (error) {

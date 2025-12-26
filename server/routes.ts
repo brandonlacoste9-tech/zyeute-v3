@@ -1,4 +1,13 @@
 import type { Express, Request, Response, NextFunction } from "express";
+
+declare global {
+  namespace Express {
+    interface Request {
+      userId?: string;
+    }
+  }
+}
+
 import type { Server } from "http";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage.js";
