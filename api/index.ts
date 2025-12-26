@@ -12,7 +12,7 @@ app.set("trust proxy", 1);
 // Parse JSON with raw body for Stripe webhooks
 declare module "http" {
   interface IncomingMessage {
-    rawBody: unknown;
+    rawBody: Buffer | undefined;
   }
 }
 

@@ -2,7 +2,6 @@
 // Clean, mythic, swarm-native — built from scratch
 // Three Bees. Three instincts. One Hive.
 
-import OpenAI from "openai";
 import { fal } from "@fal-ai/client";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -12,9 +11,12 @@ const trace = (name: string, fn: () => Promise<any>) => fn();
 
 // --- 1. BEE CONFIGURATION ---
 const BEES = {
+  // DeepSeek config for server-side
   BRAIN_BEE: {
     model: "deepseek-chat",
     baseUrl: "https://api.deepseek.com",
+    // Note: In client context this might be empty, 
+    // but this file is server-side (api/), so it likely has access to process.env
     apiKey: process.env.DEEPSEEK_API_KEY || "",
   },
 
@@ -57,15 +59,9 @@ Output ONLY the rewritten prompt.
 
 // --- 3. HIVE ENGINE ---
 export class HiveEngine {
-  private brain: OpenAI;
   private generalist: GoogleGenerativeAI | null = null;
 
   constructor() {
-    this.brain = new OpenAI({
-      apiKey: BEES.BRAIN_BEE.apiKey,
-      baseURL: BEES.BRAIN_BEE.baseUrl,
-    });
-
     if (BEES.GENERALIST_BEE.apiKey) {
       this.generalist = new GoogleGenerativeAI(BEES.GENERALIST_BEE.apiKey);
     }
@@ -105,16 +101,40 @@ export class HiveEngine {
   }
 
   // --- BRAIN_BEE (DeepSeek) ---
+  // Replaced OpenAI SDK with native fetch to remove dependency
   private async askBrain(system: string, user: string, temp: number) {
-    const res = await this.brain.chat.completions.create({
-      model: BEES.BRAIN_BEE.model,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      temperature: temp,
-    });
-    return res.choices[0].message.content || "";
+    if (!BEES.BRAIN_BEE.apiKey) {
+      console.warn("⚠️ DeepSeek API Key missing in HiveEngine");
+      return "Service unavailable (Key missing)";
+    }
+
+    try {
+      const response = await fetch(`${BEES.BRAIN_BEE.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${BEES.BRAIN_BEE.apiKey}`
+        },
+        body: JSON.stringify({
+          model: BEES.BRAIN_BEE.model,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user },
+          ],
+          temperature: temp,
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`DeepSeek API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content || "";
+    } catch (error) {
+      console.error("HiveEngine DeepSeek error:", error);
+      return "Error contacting Hive Mind.";
+    }
   }
 
   // --- GENERALIST_BEE (Gemini Flash / Mistral) ---
