@@ -22,7 +22,7 @@ app.use(helmet({
 // Extend IncomingMessage for Stripe raw body
 declare module "http" {
   interface IncomingMessage {
-    rawBody: Buffer;
+    rawBody: Buffer | undefined;
   }
 }
 
@@ -136,8 +136,19 @@ app.use(
 
 // Vercel serverless handler export
 export default async function handler(req: any, res: any) {
-  await initRoutes();
-  return app(req, res);
+  try {
+    await initRoutes();
+    return app(req, res);
+  } catch (err: any) {
+    console.error("Critical Server Startup Error:", err);
+    // Return JSON response to avoid SyntaxError in client
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ 
+      error: "Server startup failed", 
+      details: process.env.NODE_ENV === "production" ? "Check server logs" : err.message 
+    }));
+  }
 }
 
 // Local Development Server Start

@@ -1,14 +1,16 @@
 import { type Express } from "express";
-import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
-import viteConfig from "../vite.config.js";
 import fs from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
 
-const viteLogger = createLogger();
-
 export async function setupVite(server: Server, app: Express) {
+  // Use dynamic imports with variables to prevent esbuild from bundling these in production
+  const viteModuleName = "vite";
+  const { createServer: createViteServer, createLogger } = await import(viteModuleName);
+  const configPath = path.resolve(process.cwd(), "vite.config.js");
+  const viteConfig = (await import(configPath)).default;
+  const viteLogger = createLogger();
   const serverOptions = {
     middlewareMode: true,
     hmr: { server, path: "/vite-hmr" },

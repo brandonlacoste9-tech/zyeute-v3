@@ -36,11 +36,27 @@ async function apiCall<T>(
       credentials: 'include', // Include cookies for session
     });
 
-    const data = await response.json();
-
+    // Handle non-OK responses or non-JSON responses
     if (!response.ok) {
-      return { data: null, error: data.error || 'Request failed' };
+      let errorMsg = 'Request failed';
+      try {
+        const errorData = await response.json();
+        errorMsg = errorData.error || errorMsg;
+      } catch (e) {
+        // Fallback to text if JSON parse fails (e.g. 500 server crash with text body)
+        // This prevents "Unexpected token" crashes in the client
+        try {
+            const text = await response.text();
+            apiLogger.error(`API Error (${response.status}):`, text);
+            errorMsg = `Server Error (${response.status})`;
+        } catch (readError) {
+            errorMsg = `Network Error (${response.status})`;
+        }
+      }
+      return { data: null, error: errorMsg };
     }
+
+    const data = await response.json();
 
     return { data, error: null };
   } catch (error) {
