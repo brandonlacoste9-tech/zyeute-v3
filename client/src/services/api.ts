@@ -211,7 +211,8 @@ export async function createPost(postData: any): Promise<Post | null> {
             visibilite: postData.visibility || 'public',
             region_id: postData.region,
             content: 'Media upload', // Required field
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            type: postData.type // Now supported by DB
         })
         .select('*, user:user_profiles(*)')
         .single();
@@ -367,10 +368,12 @@ function mapBackendUser(u: any): User {
 function mapBackendPost(p: any): Post {
     if (!p) return p;
     
-    // Infer type from extension if not present
-    let type = 'photo';
+    // Use DB type if available, otherwise infer
+    let type = p.type || 'photo';
     const url = p.media_url || p.mediaUrl || p.original_url || '';
-    if (typeof url === 'string' && url.match(/\.(mp4|mov|webm|avi)$/i)) {
+    
+    // Fallback inference if type is not strictly set (legacy data)
+    if (!p.type && typeof url === 'string' && url.match(/\.(mp4|mov|webm|avi)$/i)) {
         type = 'video';
     }
 
@@ -385,6 +388,9 @@ function mapBackendPost(p: any): Post {
         comment_count: p.comments_count || 0,
         user: p.user ? mapBackendUser(p.user) : undefined,
         created_at: p.created_at,
-        type: type
+        hashtags: p.hashtags || [],
+        region: p.region_id,
+        city: p.city,
+        type: type as 'video' | 'photo'
     } as Post;
 }
