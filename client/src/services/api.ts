@@ -110,20 +110,52 @@ export async function getFeedPosts(page: number = 0, limit: number = 20): Promis
 }
 
 export async function getExplorePosts(page: number = 0, limit: number = 20): Promise<Post[]> {
-  // Logic allows showing trending or random high-quality posts
    const from = page * limit;
    const to = from + limit - 1;
 
+   // Try fetching from Supabase first
    const { data, error } = await supabase
     .from('publications')
     .select('*, user:user_profiles(*)')
     .eq('visibilite', 'public')
-    .gt('reactions_count', 0) // Simple 'trending' filter
+    .gt('reactions_count', 0)
     .order('reactions_count', { ascending: false })
     .range(from, to);
 
-  if (error) return [];
-  return (data || []).map(mapBackendPost);
+  if (!error && data && data.length > 0) {
+      return data.map(mapBackendPost);
+  }
+
+  // FALLBACK: Call Local Backend API (For Demo/Empty State prevention)
+  // This ensures the user NEVER sees an empty screen during the demo.
+  try {
+      const fallbackResponse = await fetch('/api/explore');
+      if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          // Map the simple mock data to the Service Type
+          return fallbackData.map((p: any) => ({
+             id: p.id,
+             user_id: p.user.username, // Mock ID
+             media_url: p.videoUrl,
+             caption: p.description,
+             fire_count: p.likes,
+             comment_count: 0,
+             user: {
+                 id: p.user.username,
+                 username: p.user.username,
+                 display_name: p.user.username,
+                 avatar_url: p.user.avatar_url,
+                 is_verified: true
+             },
+             created_at: new Date().toISOString(),
+             type: 'video'
+          }));
+      }
+  } catch (e) {
+      apiLogger.warn('Fallback fetch failed', e);
+  }
+
+  return [];
 }
 
 export async function getPostById(postId: string): Promise<Post | null> {

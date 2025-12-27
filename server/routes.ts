@@ -48,6 +48,41 @@ export function registerRoutes(app: Express): Server {
     res.json({ status: "ok" });
   });
 
+  // FEED EXPLORE (The "Content" Flow)
+  app.get("/api/explore", (req, res) => {
+    // Mock Data for IMMEDIATE VISUAL PROOF
+    res.json([
+        {
+            id: "vid_01",
+            title: "Le Festin de Montréal",
+            description: "POV: La meilleure poutine.",
+            videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-winter-forest-with-trees-covered-in-snow-40892-large.mp4", // Safe placeholder
+            thumbnailUrl: "https://images.unsplash.com/photo-1588790384592-23c345a34f4c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+            user: {
+                username: "poutine_king",
+                avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=King"
+            },
+            likes: 450,
+            views: 1200,
+            is_exclusive: false
+        },
+        {
+            id: "vid_02",
+            title: "Night Sky QC",
+            description: "Aurores boréales hier soir!",
+            videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-1610-large.mp4",
+            thumbnailUrl: "https://images.unsplash.com/photo-1531306728370-e2ebd9d7bb99?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+            user: {
+                username: "astro_guy",
+                avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Astro"
+            },
+            likes: 890,
+            views: 5000,
+            is_exclusive: true // Test the lock!
+        }
+    ]);
+  });
+
   // STRIPE CHECKOUT (The "Money" Flow)
   app.post("/api/stripe/test-checkout", (req, res) => {
     // In production, initiate Stripe Session here
