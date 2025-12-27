@@ -366,15 +366,23 @@ function mapBackendUser(u: any): User {
 
 function mapBackendPost(p: any): Post {
     if (!p) return p;
+    
+    // Infer type from extension if not present
+    let type = 'photo';
+    const url = p.media_url || p.mediaUrl || p.original_url || '';
+    if (url.match(/\.(mp4|mov|webm|avi)$/i)) {
+        type = 'video';
+    }
+
     return {
         id: p.id,
         user_id: p.user_id,
-        media_url: p.media_url || p.mediaUrl || p.original_url,
+        media_url: url,
         caption: p.caption,
         fire_count: p.reactions_count || 0,
         comment_count: p.comments_count || 0,
         user: p.user ? mapBackendUser(p.user) : undefined,
         created_at: p.created_at,
-        type: 'photo' // Default
+        type: type
     } as Post;
 }

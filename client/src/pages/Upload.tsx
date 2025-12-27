@@ -71,14 +71,14 @@ export const Upload: React.FC = () => {
       const filePath = `posts/${user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('media')
+        .from('posts_public')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('media')
+        .from('posts_public')
         .getPublicUrl(filePath);
 
       // Extract hashtags
