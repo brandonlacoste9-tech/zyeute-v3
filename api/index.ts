@@ -45,7 +45,7 @@ const httpServer = createServer(app);
 let routesInitialized = false;
 const initRoutes = async () => {
   if (!routesInitialized) {
-    await registerRoutes(httpServer, app);
+    await registerRoutes(app);
     routesInitialized = true;
     console.log("Routes initialized");
   }
