@@ -145,7 +145,7 @@ export class HiveEngine {
     const model = this.generalist.getGenerativeModel({
       model: BEES.GENERALIST_BEE.model,
       systemInstruction: system,
-    });
+    } as any);
     const result = await model.generateContent(user);
     return result.response.text();
   }
