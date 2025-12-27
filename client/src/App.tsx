@@ -47,6 +47,7 @@ const Analytics = lazy(() => import('@/pages/Analytics'));
 const StoryCreator = lazy(() => import('@/components/features/StoryCreator'));
 const Achievements = lazy(() => import('@/pages/Achievements'));
 const CreatorRevenue = lazy(() => import('@/pages/CreatorRevenue'));
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
 
 // Admin Pages - Lazy loaded (admin only)
 const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'));
@@ -207,6 +208,16 @@ function App() {
                                         <Feed />
                                       </ErrorBoundary>
                                     </ProtectedRoute>
+                                  }
+                                />
+                                <Route
+                                  path="/dashboard"
+                                  element={
+                                    <ProtectedUserRoute>
+                                      <Suspense fallback={<LazyLoadFallback />}>
+                                        <Dashboard />
+                                      </Suspense>
+                                    </ProtectedUserRoute>
                                   }
                                 />
                                 <Route

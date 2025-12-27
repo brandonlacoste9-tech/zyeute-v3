@@ -40,7 +40,7 @@ class SwarmPresenceService {
    * Toggle presence opt-in state.
    * "The device determines the hive presence."
    */
-  public setPresence(enabled: boolean): void {
+  public async setPresence(enabled: boolean): Promise<void> {
     this._optedIn = enabled;
     localStorage.setItem(STORAGE_KEY_PRESENCE, String(enabled));
     
@@ -48,6 +48,19 @@ class SwarmPresenceService {
       this.broadcastHello();
     } else {
       this.disconnect();
+    }
+
+    // Backend sync
+    try {
+      await fetch('/api/presence', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ enabled }),
+      });
+    } catch (error) {
+      console.warn('[SwarmPresence] Failed to sync presence with backend', error);
     }
   }
 
