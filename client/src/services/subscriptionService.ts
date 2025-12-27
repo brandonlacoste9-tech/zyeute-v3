@@ -189,72 +189,30 @@ export async function subscribeToCreator(
   tierId: string
 ): Promise<boolean> {
   try {
-    // Check if already subscribed
     const isSubscribed = await isSubscribedTo(subscriberId, creatorId);
     if (isSubscribed) {
       toast.warning('Tu es déjà abonné!');
       return false;
     }
 
-    // Get tier details
-    const { data: tier } = await supabase
-      .from('subscription_tiers')
-      .select('*')
-      .eq('id', tierId)
-      .single();
+    // Call Backend
+    const response = await fetch('/api/stripe/test-checkout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ tierId, creatorId, subscriberId })
+    });
+    
+    if (!response.ok) throw new Error('Payment init failed');
 
-    if (!tier) {
-      toast.error('Abonnement introuvable');
-      return false;
+    const data = await response.json();
+    if (data.url) {
+        window.location.href = data.url; // Redirect to Stripe
+        return true;
     }
 
-    // Check if user has enough cennes (for demo purposes)
-    const { data: userData } = await supabase
-      .from('user_profiles')
-      .select('cennes')
-      .eq('id', subscriberId)
-      .single();
-
-    const cennesRequired = Math.round(tier.price * 100); // $1 = 100 cennes
-
-    if (!userData || (userData.cennes || 0) < cennesRequired) {
-      toast.error(`Tu as besoin de ${cennesRequired} cennes (${tier.price}$ CAD)`);
-      return false;
-    }
-
-    // Deduct cennes
-    await supabase
-      .from('user_profiles')
-      .update({ cennes: (userData.cennes || 0) - cennesRequired })
-      .eq('id', subscriberId);
-
-    // Create subscription
-    const { error } = await supabase.from('subscriptions').insert({
-      subscriber_id: subscriberId,
-      creator_id: creatorId,
-      tier_id: tierId,
-      status: 'active',
-      current_period_start: new Date().toISOString(),
-      current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-    });
-
-    if (error) throw error;
-
-    // Record revenue
-    await supabase.rpc('record_subscription_revenue', {
-      p_subscription_id: subscriberId, // This would be the actual subscription ID
-      p_amount: tier.price,
-    });
-
-    // Create notification for creator
-    await supabase.from('notifications').insert({
-      user_id: creatorId,
-      type: 'subscription',
-      message: `Nouvel abonné à ${tier.name_fr}! 💰`,
-    });
-
-    toast.success(`Abonné à ${tier.name_fr}! 🎉`);
-    return true;
+    return false;
   } catch (error: any) {
     subscriptionServiceLogger.error('Error subscribing:', error);
     toast.error('Erreur lors de l\'abonnement');

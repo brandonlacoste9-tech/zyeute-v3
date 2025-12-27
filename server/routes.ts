@@ -48,6 +48,17 @@ export function registerRoutes(app: Express): Server {
     res.json({ status: "ok" });
   });
 
+  // STRIPE CHECKOUT (The "Money" Flow)
+  app.post("/api/stripe/test-checkout", (req, res) => {
+    // In production, initiate Stripe Session here
+    const { priceId } = req.body;
+    res.json({
+        url: `https://checkout.stripe.com/pay/${priceId || 'mock-price'}?test_mode=true`,
+        mock: true,
+        message: "Real Stripe Integration requires Secret Key"
+    });
+  });
+
   // GLOBAL STATIC SYNC (The "Payload" Delivery)
   // Serve the frontend build artifacts
   const express = require('express');

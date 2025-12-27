@@ -12,6 +12,7 @@
     "test": "vitest run",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "worker:video": "tsx server/workers/videoProcessor.ts",
+    "dev:server": "tsx server/dev.ts",
     "preflight": "npm run check && npm run lint && npm run build && npm run test",
     "worker": "tsx server/startWorker.ts",
     "db:push": "drizzle-kit push",
