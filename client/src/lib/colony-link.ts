@@ -1,10 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL!,
-  import.meta.env.VITE_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabase';
 
 const COLONY_API_URL = import.meta.env.VITE_COLONY_API_URL || 'http://localhost:10000';
 
