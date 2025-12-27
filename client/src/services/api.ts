@@ -123,7 +123,7 @@ export async function getExplorePosts(page: number = 0, limit: number = 20): Pro
     .range(from, to);
 
   if (!error && data && data.length > 0) {
-      return data.map(mapBackendPost);
+      return data.map(mapBackendPost).filter(p => !!p);
   }
 
   // FALLBACK: Hardcoded Data (Network Bypass)
@@ -195,7 +195,7 @@ export async function getUserPosts(userId: string): Promise<Post[]> {
     .order('created_at', { ascending: false });
 
   if (error) return [];
-  return (data || []).map(mapBackendPost);
+  return (data || []).map(mapBackendPost).filter(p => !!p);
 }
 
 export async function createPost(postData: any): Promise<Post | null> {
@@ -370,15 +370,17 @@ function mapBackendPost(p: any): Post {
     // Infer type from extension if not present
     let type = 'photo';
     const url = p.media_url || p.mediaUrl || p.original_url || '';
-    if (url.match(/\.(mp4|mov|webm|avi)$/i)) {
+    if (typeof url === 'string' && url.match(/\.(mp4|mov|webm|avi)$/i)) {
         type = 'video';
     }
+
+    if (!p.id) return null as unknown as Post;
 
     return {
         id: p.id,
         user_id: p.user_id,
         media_url: url,
-        caption: p.caption,
+        caption: p.caption || '',
         fire_count: p.reactions_count || 0,
         comment_count: p.comments_count || 0,
         user: p.user ? mapBackendUser(p.user) : undefined,
