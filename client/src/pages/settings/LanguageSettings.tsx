@@ -9,15 +9,25 @@ import { BottomNav } from '@/components/BottomNav';
 import { useSettingsPreferences } from '@/hooks/useSettingsPreferences';
 import { toast } from '@/components/Toast';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useTranslation } from '@/locales/I18nContext';
+import { Locale } from '@/locales/types';
 
 export const LanguageSettings: React.FC = () => {
   const { preferences, setPreference } = useSettingsPreferences();
   const { tap } = useHaptics();
+  const { setLocale } = useTranslation();
 
-  const handleLanguageSelect = (lang: 'fr' | 'en') => {
+  const handleLanguageSelect = (lang: 'fr' | 'en' | 'hi') => {
     tap();
     setPreference('language', lang);
-    toast.success(`Langue changée: ${lang === 'fr' ? 'Français' : 'English'}! ✨`);
+    
+    // Map preference to locale
+    let locale: Locale = 'fr-CA';
+    if (lang === 'en') locale = 'en-CA';
+    if (lang === 'hi') locale = 'hi-IN';
+    
+    setLocale(locale);
+    toast.success(`Langue changée! ✨`);
   };
 
   return (
@@ -70,28 +80,52 @@ export const LanguageSettings: React.FC = () => {
           </p>
         </div>
 
-        {/* Tiny English Toggle - Hidden at bottom */}
+        {/* Global Languages Toggle - Hidden at bottom */}
         <div className="mt-12 pt-8 border-t border-leather-800/30">
-          <button
-            onClick={() => handleLanguageSelect('en')}
-            className={`w-full text-left p-3 rounded-lg transition-all opacity-40 hover:opacity-70 ${
-              preferences.language === 'en'
-                ? 'bg-leather-800/30 border border-leather-600/50'
-                : 'bg-leather-900/20 border border-transparent'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm">🌐</span>
-                <p className="text-leather-500 text-xs">English interface</p>
-              </div>
-              {preferences.language === 'en' && (
-                <span className="text-leather-500 text-xs">✓</span>
-              )}
-            </div>
-          </button>
+          <h4 className="text-leather-500 text-xs uppercase font-bold mb-4 ml-2">Global Access</h4>
+          
+          <div className="space-y-2">
+              <button
+                onClick={() => handleLanguageSelect('en')}
+                className={`w-full text-left p-3 rounded-lg transition-all opacity-40 hover:opacity-70 ${
+                  preferences.language === 'en'
+                    ? 'bg-leather-800/30 border border-leather-600/50'
+                    : 'bg-leather-900/20 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">🌐</span>
+                    <p className="text-leather-500 text-xs">English interface</p>
+                  </div>
+                  {preferences.language === 'en' && (
+                    <span className="text-leather-500 text-xs">✓</span>
+                  )}
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleLanguageSelect('hi')}
+                className={`w-full text-left p-3 rounded-lg transition-all opacity-40 hover:opacity-70 ${
+                  (preferences.language as string) === 'hi'
+                    ? 'bg-orange-900/30 border border-orange-600/50'
+                    : 'bg-leather-900/20 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">🕉️</span>
+                    <p className="text-leather-500 text-xs">Bharat (Hindi) interface</p>
+                  </div>
+                  {(preferences.language as string) === 'hi' && (
+                    <span className="text-leather-500 text-xs">✓</span>
+                  )}
+                </div>
+              </button>
+          </div>
+          
           <p className="text-leather-600 text-[10px] text-center mt-2">
-            For non-French speakers only
+            Non-standard regions
           </p>
         </div>
       </div>

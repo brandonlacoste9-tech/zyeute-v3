@@ -38,9 +38,12 @@ export const BorderColorProvider: React.FC<{ children: React.ReactNode }> = ({ c
   });
 
   // Save the color to localStorage whenever it changes
+  // Save the color to localStorage whenever it changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('appBorderColor', color);
+      // Apply the color variable to root
+      document.documentElement.style.setProperty('--edge-color', color);
     }
   }, [color]);
 

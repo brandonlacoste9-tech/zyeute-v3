@@ -77,6 +77,7 @@ export const imageSynth = {
    */
   async generate({ prompt, style = 'cinematic', aspectRatio = '1:1', negativePrompt, seed }: GenerationOptions): Promise<GenerationResult> {
     mediaLogger.info(`Generating ${style} image...`, { prompt });
+    const startTime = Date.now();
 
     // Enhance prompt based on style
     const styleModifiers = {
@@ -134,6 +135,25 @@ export const imageSynth = {
         const { data: { publicUrl } } = supabase.storage
             .from('media')
             .getPublicUrl(fileName);
+
+
+        const generationDuration = Date.now() - startTime;
+        
+        // Phase 8: Telemetry
+        import('./swarmTelemetry').then(({ logSwarmEvent }) => {
+            logSwarmEvent({
+                agent: 'mediaAgent',
+                action: 'generateCinematicMedia',
+                metadata: {
+                    prompt, 
+                    style, 
+                    model: DEFAULT_MODEL, 
+                    originalUrl: imageUrl,
+                    finalUrl: publicUrl
+                },
+                latencyMs: generationDuration
+            });
+        });
 
         return {
             url: publicUrl,
