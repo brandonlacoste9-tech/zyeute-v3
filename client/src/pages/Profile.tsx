@@ -283,14 +283,33 @@ export const Profile: React.FC = () => {
                 </GoldButton>
               </Link>
             ) : (
-              <GoldButton
-                onClick={handleFollow}
-                isInverse={isFollowing}
-                className="w-full"
-                size="md"
-              >
-                {isFollowing ? 'Following' : 'Follow'}
-              </GoldButton>
+              <div className="flex gap-2">
+                <GoldButton
+                  onClick={handleFollow}
+                  isInverse={isFollowing}
+                  className="flex-1"
+                  size="md"
+                >
+                  {isFollowing ? 'Following' : 'Follow'}
+                </GoldButton>
+                
+                <GoldButton
+                  onClick={async () => {
+                     tap();
+                     try {
+                        const { subscribeToCreator } = await import('@/services/subscriptionService');
+                        await subscribeToCreator(user.id);
+                     } catch (e) {
+                        alert("Erreur Stripe: " + e);
+                     }
+                  }}
+                  isInverse={false}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-green-800 border-green-500 text-white"
+                  size="md"
+                >
+                  S'abonner (5$)
+                </GoldButton>
+              </div>
             )}
           </div>
 
