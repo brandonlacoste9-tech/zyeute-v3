@@ -1,0 +1,32 @@
+{
+  "regionId": "mx-mx",
+  "configVersion": 1,
+  
+  "sovereignty": {
+    "writeEndpoint": "https://aws-latam-1.zyeute.com",
+    "readEndpoint": "https://aws-latam-1.zyeute.com",
+    "jurisdiction": "NONE",
+    "auth": {
+      "supabaseUrl": "https://mx-project-id.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    }
+  },
+
+  "presentation": {
+    "themeId": "theme-sun-stone",
+    "locale": "es-MX",
+    "assets": {
+      "logoUri": "asset://logos/zyeute_mx_sun.png",
+      "splashBackground": "#E85D04",
+      "appIcon": "icon_mx"
+    },
+    "stringsBundleUrl": "https://cdn.zyeute.com/strings/es-mx/v1.json"
+  },
+
+  "features": {
+    "monetization": true,
+    "stealthMode": false,
+    "localContentBoost": 2.5,
+    "authMethods": ["email", "phone", "google", "apple"]
+  }
+}

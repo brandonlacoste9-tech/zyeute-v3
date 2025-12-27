@@ -7,23 +7,15 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { ThemeProvider } from '@/contexts/ThemeContext';
-import { NotificationProvider } from '@/contexts/NotificationContext';
-import { BorderColorProvider } from '@/contexts/BorderColorContext';
 import { MainLayout } from '@/components/MainLayout';
 import { PageTransition } from '@/components/AnimatedRoutes';
 import { TiGuy } from '@/components/features/TiGuy';
 import { LoadingScreen } from '@/components/LoadingScreen';
-import { GuestModeProvider } from '@/contexts/GuestModeContext';
 import { MapleSpinner } from '@/components/ui/MapleSpinner';
 import { AchievementListener } from '@/components/gamification/AchievementModal';
 import { ProtectedAdminRoute } from '@/components/auth';
-// import { SwarmDebug } from '@/components/SwarmDebug';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { ColonyProvider } from '@/components/providers/colony-provider';
 import { ProtectedUserRoute } from '@/components/auth';
 import { RedirectIfAuthenticated } from '@/components/auth';
-import { GUEST_SESSION_DURATION, GUEST_MODE_KEY, GUEST_TIMESTAMP_KEY, GUEST_VIEWS_KEY } from '@/lib/constants';
 
 // Core Pages - Eagerly loaded (frequently accessed)
 // Home (deprecated) -> Redirects to Feed
@@ -103,6 +95,9 @@ const LazyLoadFallback: React.FC = () => (
   </div>
 );
 
+// Protected Route Imports (Moved to top of file in V3 cleanup, but keeping here for minimal diff risk)
+import { useAuth } from '@/contexts/AuthContext';
+
 // Protected Route Component - Uses centralized AuthContext
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -114,508 +109,483 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
-
-const GlobalAuthLoader: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isLoading } = useAuth();
-  if (isLoading) {
-    return <LoadingScreen message="Chargement de Zyeuté..." />;
-  }
-  return <>{children}</>;
-};
-
 function App() {
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
-        <NotificationProvider>
-          <AuthProvider>
-            <GuestModeProvider>
-            <ColonyProvider>
-              <GlobalAuthLoader>
-                <BorderColorProvider>
-                <BrowserRouter>
-                  {/* Achievement Listener (Global) */}
-                  <AchievementListener />
+    <BrowserRouter>
+      {/* Achievement Listener (Global) */}
+      <AchievementListener />
 
-                  <Suspense fallback={<LoadingScreen />}>
-                    <Routes>
-                      {/* Full-screen routes (outside MainLayout) */}
-                      <Route
-                        path="/video/:videoId"
-                        element={
-                          <ProtectedRoute>
-                            <Player />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/zyeute"
-                        element={
-                          <ProtectedRoute>
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes>
+          {/* Full-screen routes (outside MainLayout) */}
+          <Route
+            path="/video/:videoId"
+            element={
+              <ProtectedRoute>
+                <Player />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/zyeute"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<LazyLoadFallback />}>
+                  <LaZyeute />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Main App Content (inside MainLayout) */}
+          <Route
+            path="*"
+            element={
+              <MainLayout>
+                <PageTransition>
+                  <Routes>
+                    {/* Public Routes - Wrapped to auto-redirect logged-in users */}
+                    <Route path="/login" element={
+                      <RedirectIfAuthenticated>
+                        <Login />
+                      </RedirectIfAuthenticated>
+                    } />
+                    <Route path="/signup" element={
+                      <RedirectIfAuthenticated>
+                        <Signup />
+                      </RedirectIfAuthenticated>
+                    } />
+                    <Route path="/forgot-password" element={
+                      <RedirectIfAuthenticated>
+                        <ForgotPassword />
+                      </RedirectIfAuthenticated>
+                    } />
+                    <Route path="/reset-password" element={
+                      <RedirectIfAuthenticated>
+                        <ResetPassword />
+                      </RedirectIfAuthenticated>
+                    } />
+                    <Route path="/verify-email" element={<VerifyEmail />} />
+                    <Route path="/verify-email/:token" element={<VerifyEmail />} />
+                    <Route path="/auth/callback" element={<AuthCallback />} />
+
+                    {/* Protected Routes - with granular error boundaries */}
+                    <Route
+                      path="/"
+                      element={
+                        <ProtectedRoute>
+                          <Navigate to="/feed" replace />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/feed"
+                      element={
+                        <ProtectedRoute>
+                          <ErrorBoundary>
+                            <Feed />
+                          </ErrorBoundary>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/dashboard"
+                      element={
+                        <ProtectedUserRoute>
+                          <Suspense fallback={<LazyLoadFallback />}>
+                            <Dashboard />
+                          </Suspense>
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/explore"
+                      element={
+                        <ProtectedRoute>
+                          <ErrorBoundary>
+                            <Explore />
+                          </ErrorBoundary>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/upload"
+                      element={
+                        <ProtectedUserRoute>
+                          <ErrorBoundary>
                             <Suspense fallback={<LazyLoadFallback />}>
-                              <LaZyeute />
+                              <Upload />
                             </Suspense>
-                          </ProtectedRoute>
-                        }
-                      />
+                          </ErrorBoundary>
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/story/create"
+                      element={
+                        <ProtectedUserRoute>
+                          <Suspense fallback={<LazyLoadFallback />}>
+                            <StoryCreator />
+                          </Suspense>
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/notifications"
+                      element={
+                        <ProtectedUserRoute>
+                          <Suspense fallback={<LazyLoadFallback />}>
+                            <Notifications />
+                          </Suspense>
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/profile/:slug"
+                      element={
+                        <ProtectedRoute>
+                          <ErrorBoundary>
+                            <Profile />
+                          </ErrorBoundary>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/p/:id"
+                      element={
+                        <ProtectedRoute>
+                          <ErrorBoundary>
+                            <Suspense fallback={<LazyLoadFallback />}>
+                              <PostDetail />
+                            </Suspense>
+                          </ErrorBoundary>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings"
+                      element={
+                        <ProtectedUserRoute>
+                          <ErrorBoundary>
+                            <Suspense fallback={<LazyLoadFallback />}>
+                              <Settings />
+                            </Suspense>
+                          </ErrorBoundary>
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/analytics"
+                      element={
+                        <ProtectedUserRoute>
+                          <Suspense fallback={<LazyLoadFallback />}>
+                            <Analytics />
+                          </Suspense>
+                        </ProtectedUserRoute>
+                      }
+                    />
 
-                      {/* Main App Content (inside MainLayout) */}
-                      <Route
-                        path="*"
-                        element={
-                          <MainLayout>
-                            <PageTransition>
-                              <Routes>
-                                {/* Public Routes - Wrapped to auto-redirect logged-in users */}
-                                <Route path="/login" element={
-                                  <RedirectIfAuthenticated>
-                                    <Login />
-                                  </RedirectIfAuthenticated>
-                                } />
-                                <Route path="/signup" element={
-                                  <RedirectIfAuthenticated>
-                                    <Signup />
-                                  </RedirectIfAuthenticated>
-                                } />
-                                <Route path="/forgot-password" element={
-                                  <RedirectIfAuthenticated>
-                                    <ForgotPassword />
-                                  </RedirectIfAuthenticated>
-                                } />
-                                <Route path="/reset-password" element={
-                                  <RedirectIfAuthenticated>
-                                    <ResetPassword />
-                                  </RedirectIfAuthenticated>
-                                } />
-                                <Route path="/verify-email" element={<VerifyEmail />} />
-                                <Route path="/verify-email/:token" element={<VerifyEmail />} />
-                                <Route path="/auth/callback" element={<AuthCallback />} />
+                    {/* Phase 2 Feature Routes - Lazy loaded */}
+                    <Route
+                      path="/artiste"
+                      element={
+                        <ProtectedUserRoute>
+                          <Suspense fallback={<LazyLoadFallback />}>
+                            <Artiste />
+                          </Suspense>
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/studio"
+                      element={
+                        <ProtectedUserRoute>
+                          <Suspense fallback={<LazyLoadFallback />}>
+                            <Studio />
+                          </Suspense>
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/marketplace"
+                      element={
+                        <ProtectedUserRoute>
+                          <Suspense fallback={<LazyLoadFallback />}>
+                            <Marketplace />
+                          </Suspense>
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/premium"
+                      element={
+                        <ProtectedUserRoute>
+                          <Suspense fallback={<LazyLoadFallback />}>
+                            <Premium />
+                          </Suspense>
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/challenges"
+                      element={
+                        <ProtectedUserRoute>
+                          <Suspense fallback={<LazyLoadFallback />}>
+                            <Challenges />
+                          </Suspense>
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/voice"
+                      element={
+                        <ProtectedUserRoute>
+                          <VoiceSettingsPage />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/tags"
+                      element={
+                        <ProtectedUserRoute>
+                          <TagsSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/comments"
+                      element={
+                        <ProtectedUserRoute>
+                          <CommentsSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/sharing"
+                      element={
+                        <ProtectedUserRoute>
+                          <SharingSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/restricted"
+                      element={
+                        <ProtectedUserRoute>
+                          <RestrictedAccountsSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/favorites"
+                      element={
+                        <ProtectedUserRoute>
+                          <FavoritesSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/muted"
+                      element={
+                        <ProtectedUserRoute>
+                          <MutedAccountsSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/content"
+                      element={
+                        <ProtectedUserRoute>
+                          <ContentPreferencesSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/media"
+                      element={
+                        <ProtectedUserRoute>
+                          <MediaSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/audio"
+                      element={
+                        <ProtectedUserRoute>
+                          <AudioSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/storage"
+                      element={
+                        <ProtectedUserRoute>
+                          <StorageSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/app"
+                      element={
+                        <ProtectedUserRoute>
+                          <AppSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/region"
+                      element={
+                        <ProtectedUserRoute>
+                          <RegionSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/language"
+                      element={
+                        <ProtectedUserRoute>
+                          <LanguageSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/profile"
+                      element={
+                        <ProtectedUserRoute>
+                          <ProfileEditSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/privacy"
+                      element={
+                        <ProtectedUserRoute>
+                          <PrivacySettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/notifications"
+                      element={
+                        <ProtectedUserRoute>
+                          <NotificationSettings />
+                        </ProtectedUserRoute>
+                      }
+                    />
 
-                                {/* Protected Routes - with granular error boundaries */}
-                                <Route
-                                  path="/"
-                                  element={
-                                    <ProtectedRoute>
-                                      <Navigate to="/feed" replace />
-                                    </ProtectedRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/feed"
-                                  element={
-                                    <ProtectedRoute>
-                                      <ErrorBoundary>
-                                        <Feed />
-                                      </ErrorBoundary>
-                                    </ProtectedRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/dashboard"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <Suspense fallback={<LazyLoadFallback />}>
-                                        <Dashboard />
-                                      </Suspense>
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/explore"
-                                  element={
-                                    <ProtectedRoute>
-                                      <ErrorBoundary>
-                                        <Explore />
-                                      </ErrorBoundary>
-                                    </ProtectedRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/upload"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <ErrorBoundary>
-                                        <Suspense fallback={<LazyLoadFallback />}>
-                                          <Upload />
-                                        </Suspense>
-                                      </ErrorBoundary>
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/story/create"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <Suspense fallback={<LazyLoadFallback />}>
-                                        <StoryCreator />
-                                      </Suspense>
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/notifications"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <Suspense fallback={<LazyLoadFallback />}>
-                                        <Notifications />
-                                      </Suspense>
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/profile/:slug"
-                                  element={
-                                    <ProtectedRoute>
-                                      <ErrorBoundary>
-                                        <Profile />
-                                      </ErrorBoundary>
-                                    </ProtectedRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/p/:id"
-                                  element={
-                                    <ProtectedRoute>
-                                      <ErrorBoundary>
-                                        <Suspense fallback={<LazyLoadFallback />}>
-                                          <PostDetail />
-                                        </Suspense>
-                                      </ErrorBoundary>
-                                    </ProtectedRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <ErrorBoundary>
-                                        <Suspense fallback={<LazyLoadFallback />}>
-                                          <Settings />
-                                        </Suspense>
-                                      </ErrorBoundary>
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/analytics"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <Suspense fallback={<LazyLoadFallback />}>
-                                        <Analytics />
-                                      </Suspense>
-                                    </ProtectedUserRoute>
-                                  }
-                                />
+                    {/* AI Studio Route */}
+                    <Route
+                      path="/ai-studio"
+                      element={
+                        <ProtectedUserRoute>
+                          <AIStudio />
+                        </ProtectedUserRoute>
+                      }
+                    />
 
-                                {/* Phase 2 Feature Routes - Lazy loaded */}
-                                <Route
-                                  path="/artiste"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <Suspense fallback={<LazyLoadFallback />}>
-                                        <Artiste />
-                                      </Suspense>
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/studio"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <Suspense fallback={<LazyLoadFallback />}>
-                                        <Studio />
-                                      </Suspense>
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/marketplace"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <Suspense fallback={<LazyLoadFallback />}>
-                                        <Marketplace />
-                                      </Suspense>
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/premium"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <Suspense fallback={<LazyLoadFallback />}>
-                                        <Premium />
-                                      </Suspense>
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/challenges"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <Suspense fallback={<LazyLoadFallback />}>
-                                        <Challenges />
-                                      </Suspense>
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/voice"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <VoiceSettingsPage />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/tags"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <TagsSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/comments"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <CommentsSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/sharing"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <SharingSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/restricted"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <RestrictedAccountsSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/favorites"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <FavoritesSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/muted"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <MutedAccountsSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/content"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <ContentPreferencesSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/media"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <MediaSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/audio"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <AudioSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/storage"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <StorageSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/app"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <AppSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/region"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <RegionSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/language"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <LanguageSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/profile"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <ProfileEditSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/privacy"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <PrivacySettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/settings/notifications"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <NotificationSettings />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
+                    {/* Live Streaming Routes */}
+                    <Route
+                      path="/live"
+                      element={
+                        <ProtectedRoute>
+                          <LiveDiscover />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/live/go"
+                      element={
+                        <ProtectedUserRoute>
+                          <GoLive />
+                        </ProtectedUserRoute>
+                      }
+                    />
+                    <Route
+                      path="/live/watch/:id"
+                      element={
+                        <ProtectedRoute>
+                          <WatchLive />
+                        </ProtectedRoute>
+                      }
+                    />
 
-                                {/* AI Studio Route */}
-                                <Route
-                                  path="/ai-studio"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <AIStudio />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
+                    {/* Moderation Routes (Admin Only) */}
+                    <Route
+                      path="/moderation"
+                      element={
+                        <ProtectedAdminRoute>
+                          <Moderation />
+                        </ProtectedAdminRoute>
+                      }
+                    />
 
-                                {/* Live Streaming Routes */}
-                                <Route
-                                  path="/live"
-                                  element={
-                                    <ProtectedRoute>
-                                      <LiveDiscover />
-                                    </ProtectedRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/live/go"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <GoLive />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/live/watch/:id"
-                                  element={
-                                    <ProtectedRoute>
-                                      <WatchLive />
-                                    </ProtectedRoute>
-                                  }
-                                />
+                    {/* Legal Pages (Public) */}
+                    <Route path="/legal/community-guidelines" element={<CommunityGuidelines />} />
+                    <Route path="/legal/terms" element={<TermsOfService />} />
+                    <Route path="/legal/privacy" element={<PrivacyPolicy />} />
 
-                                {/* Moderation Routes (Admin Only) */}
-                                <Route
-                                  path="/moderation"
-                                  element={
-                                    <ProtectedAdminRoute>
-                                      <Moderation />
-                                    </ProtectedAdminRoute>
-                                  }
-                                />
+                    {/* Gamification */}
+                    <Route
+                      path="/achievements"
+                      element={
+                        <ProtectedUserRoute>
+                          <Achievements />
+                        </ProtectedUserRoute>
+                      }
+                    />
 
-                                {/* Legal Pages (Public) */}
-                                <Route path="/legal/community-guidelines" element={<CommunityGuidelines />} />
-                                <Route path="/legal/terms" element={<TermsOfService />} />
-                                <Route path="/legal/privacy" element={<PrivacyPolicy />} />
+                    {/* Creator Monetization */}
+                    <Route
+                      path="/revenue"
+                      element={
+                        <ProtectedUserRoute>
+                          <CreatorRevenue />
+                        </ProtectedUserRoute>
+                      }
+                    />
 
-                                {/* Gamification */}
-                                <Route
-                                  path="/achievements"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <Achievements />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
+                    {/* Admin Routes */}
+                    <Route
+                      path="/admin"
+                      element={
+                        <ProtectedAdminRoute>
+                          <AdminDashboard />
+                        </ProtectedAdminRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/emails"
+                      element={
+                        <ProtectedAdminRoute>
+                          <EmailCampaigns />
+                        </ProtectedAdminRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/hive"
+                      element={
+                        <ProtectedAdminRoute>
+                          <HiveCommand />
+                        </ProtectedAdminRoute>
+                      }
+                    />
 
-                                {/* Creator Monetization */}
-                                <Route
-                                  path="/revenue"
-                                  element={
-                                    <ProtectedUserRoute>
-                                      <CreatorRevenue />
-                                    </ProtectedUserRoute>
-                                  }
-                                />
+                    {/* Catch all - redirect to feed */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </PageTransition>
 
-                                {/* Admin Routes */}
-                                <Route
-                                  path="/admin"
-                                  element={
-                                    <ProtectedAdminRoute>
-                                      <AdminDashboard />
-                                    </ProtectedAdminRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/admin/emails"
-                                  element={
-                                    <ProtectedAdminRoute>
-                                      <EmailCampaigns />
-                                    </ProtectedAdminRoute>
-                                  }
-                                />
-                                <Route
-                                  path="/admin/hive"
-                                  element={
-                                    <ProtectedAdminRoute>
-                                      <HiveCommand />
-                                    </ProtectedAdminRoute>
-                                  }
-                                />
+                {/* Colony OS Debug Button (Phase 2 - Testing) */}
+                {/* <SwarmDebug /> */}
 
-                                {/* Catch all - redirect to feed */}
-                                <Route path="*" element={<Navigate to="/" replace />} />
-                              </Routes>
-                            </PageTransition>
-
-                            {/* Colony OS Debug Button (Phase 2 - Testing) */}
-                            {/* <SwarmDebug /> */}
-
-                            {/* Ti-Guy mascot assistant (always available) */}
-                            <TiGuy />
-                          </MainLayout>
-                        }
-                      />
-                    </Routes>
-                  </Suspense>
-                </BrowserRouter>
-              </BorderColorProvider>
-            </GlobalAuthLoader>
-            </ColonyProvider>
-            </GuestModeProvider>
-          </AuthProvider>
-        </NotificationProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
+                {/* Ti-Guy mascot assistant (always available) */}
+                <TiGuy />
+              </MainLayout>
+            }
+          />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
   );
 }
 

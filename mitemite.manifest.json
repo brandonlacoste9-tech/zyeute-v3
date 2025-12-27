@@ -1,0 +1,42 @@
+{
+  "regionId": "jp-tk",
+  "configVersion": 1,
+  
+  "sovereignty": {
+    "writeEndpoint": "https://aws-ap-northeast-1.mitemite.jp",
+    "readEndpoint": "https://aws-ap-northeast-pure.mitemite.jp",
+    "jurisdiction": "APPI",
+    "auth": {
+      "supabaseUrl": "https://jp-project-id.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    }
+  },
+
+  "presentation": {
+    "themeId": "theme-neon-tokyo",
+    "locale": "ja-JP",
+    "assets": {
+      "logoUri": "asset://logos/mitemite_katana.png",
+      "splashBackground": "#FF0055",
+      "appIcon": "icon_jp_mitemite"
+    },
+    "stringsBundleUrl": "https://cdn.zyeute.com/strings/ja-jp/v1-shibuya.json"
+  },
+
+  "features": {
+    "monetization": true,
+    "stealthMode": true,
+    "localContentBoost": 5.0,
+    "authMethods": ["apple", "google", "line"]
+  },
+
+  "slang_lexicon_preview": {
+    "app_name": "Mitemite (見て見て)",
+    "like_action": "推し (Oshi - I support/stan)",
+    "not_interested": "微妙 (Bimyou - Meh)",
+    "share_action": "拡散 (Kakusan - Spread it)",
+    "feed_header": "タイムライン (Timeline? No -> 'Imanow' / イマナウ)",
+    "notification": "通知 (Tsuchi? No -> 'News' / ニュース)",
+    "profile_tab": "マイペ (Mai-Pe / My Page)"
+  }
+}

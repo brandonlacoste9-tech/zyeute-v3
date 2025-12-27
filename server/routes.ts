@@ -48,5 +48,18 @@ export function registerRoutes(app: Express): Server {
     res.json({ status: "ok" });
   });
 
+  // GLOBAL STATIC SYNC (The "Payload" Delivery)
+  // Serve the frontend build artifacts
+  const express = require('express');
+  const path = require('path');
+  const distPath = path.resolve(__dirname, "../../dist/public"); // Adjusted for server/routes.ts location relative to root
+
+  app.use(express.static(distPath));
+
+  // SPA Fallback - Serve index.html for any unhandled routes
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+
   return server;
 }

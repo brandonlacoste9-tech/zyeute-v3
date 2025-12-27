@@ -14,6 +14,7 @@ import { getCurrentUser, getStories } from '@/services/api';
 import ZyeuteFeed from '@/components/features/ZyeuteFeed';
 import { PromoBanner } from '@/components/features/PromoBanner';
 import { SuccessModal } from '@/components/features/SuccessModal';
+import { SovereignAdInjector } from '@/components/adgen/SovereignAdInjector';
 
 import type { User, Story } from '@/types';
 import { logger } from '../lib/logger';
@@ -173,6 +174,7 @@ export const Feed: React.FC = () => {
       <div className="flex-1 w-full bg-black relative">
         
 
+        <SovereignAdInjector />
         <ZyeuteFeed />
       </div>
 

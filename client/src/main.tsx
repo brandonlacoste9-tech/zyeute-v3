@@ -2,17 +2,16 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
-import { AuthProvider } from './contexts/AuthContext';
-import { GuestModeProvider } from './contexts/GuestModeContext';
-import { ThemeProvider } from './contexts/ThemeContext';
-// import { NotificationProvider } from './contexts/NotificationContext'; // Uncomment if you have this
+import { AppProviders } from './components/AppProviders';
 
-import { I18nProvider } from './locales/I18nContext';
+// MOUNT POINT for Zyeuté V1
+// Refactored to use centralized AppProviders for correct context hydration order.
+// This resolves potential Antigravity "Dynamic View" crashes.
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <I18nProvider>
+    <AppProviders>
       <App />
-    </I18nProvider>
+    </AppProviders>
   </React.StrictMode>
 );
