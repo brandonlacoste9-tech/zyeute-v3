@@ -50,7 +50,7 @@ export class ColonyClient {
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'colony_tasks', filter: `id=eq.${taskId}` },
-        (payload) => {
+        (payload: any) => {
           onUpdate(payload.new.status, payload.new.result);
         }
       )
