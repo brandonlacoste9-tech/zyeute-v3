@@ -24,11 +24,7 @@ export default defineConfig({
       'react-virtualized-auto-sizer'
     ]
   },
-  css: {
-    postcss: {
-      plugins: [],
-    },
-  },
+
   root: path.resolve(__dirname, "client"),
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
