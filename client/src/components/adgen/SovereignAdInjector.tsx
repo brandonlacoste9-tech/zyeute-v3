@@ -14,7 +14,7 @@ interface SovereignDeal {
 
 export const SovereignAdInjector: React.FC = () => {
   const { locale } = useTranslation();
-  const { viewCount } = useGuestMode();
+  const { viewsCount } = useGuestMode();
   const [activeDeal, setActiveDeal] = useState<SovereignDeal | null>(null);
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export const SovereignAdInjector: React.FC = () => {
     // 2. Check "Vibe" (Simulated by ViewCount for now)
     
     // Only inject ads after 3 views to be polite (and simulate "learning")
-    if (viewCount < 3) return;
+    if (viewsCount < 3) return;
 
     let deal: SovereignDeal | null = null;
 
@@ -60,7 +60,7 @@ export const SovereignAdInjector: React.FC = () => {
         }
     }
 
-  }, [locale, viewCount]);
+  }, [locale, viewsCount]);
 
   if (!activeDeal) return null;
 
