@@ -3,7 +3,7 @@ import express from 'express';
 import { registerRoutes } from './routes';
 
 const app = express();
-const port = 3000;
+const port = 3001;
 
 // Basic middleware
 app.use(express.json());
