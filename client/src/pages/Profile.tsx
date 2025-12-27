@@ -296,9 +296,13 @@ export const Profile: React.FC = () => {
                 <GoldButton
                   onClick={async () => {
                      tap();
+                     if (!currentUser) {
+                         alert("Please login first");
+                         return;
+                     }
                      try {
                         const { subscribeToCreator } = await import('@/services/subscriptionService');
-                        await subscribeToCreator(user.id);
+                        await subscribeToCreator(currentUser.id, user.id, 'default_tier_v1');
                      } catch (e) {
                         alert("Erreur Stripe: " + e);
                      }
