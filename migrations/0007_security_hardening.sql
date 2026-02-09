@@ -1,110 +1,69 @@
--- Protocol Security Hardening Migration
--- Applies RLS, Realtime Policies, and Triggers for offline/background reliability
+-- ============================================================================
+-- 0007: SUPABASE SECURITY HARDENING
+-- Hardening RLS, Refactoring Views, and Optimizing Policies
+-- ============================================================================
 
--- 1. Hardening User Profiles
--- Ensure users can always read their own profile (even if public access is restricted later)
-DROP POLICY IF EXISTS "profile_self_read" ON public.user_profiles;
-CREATE POLICY "profile_self_read" ON public.user_profiles
-FOR SELECT TO authenticated
-USING (id = auth.uid());
+-- 1. HARDEN AI TASK PIPELINE (colony_tasks)
+-- Add user ownership to tasks and restrict public access
+ALTER TABLE public.colony_tasks ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES public.user_profiles(id) ON DELETE CASCADE;
 
--- 2. Realtime Messages Policies
--- Secure the realtime.messages table (used for broadcast/presence)
--- Allow users to subscribe to their own private channel
-DROP POLICY IF EXISTS "user_can_receive_user_topic" ON realtime.messages;
-CREATE POLICY "user_can_receive_user_topic" ON realtime.messages
-FOR SELECT TO authenticated
-USING (
-  recipient_id::text = auth.uid()::text -- Note: Recipient check based on Realtime implementation intricacies
-  OR (
-     topic LIKE 'user:%:notifications'
-     AND SPLIT_PART(topic, ':', 2)::uuid = auth.uid()
-  )
-);
+-- Drop insecure public policies
+DROP POLICY IF EXISTS "Anyone can insert tasks" ON public.colony_tasks;
+DROP POLICY IF EXISTS "Anyone can view tasks" ON public.colony_tasks;
 
-DROP POLICY IF EXISTS "user_can_send_user_topic" ON realtime.messages;
-CREATE POLICY "user_can_send_user_topic" ON realtime.messages
-FOR INSERT TO authenticated
-WITH CHECK (
-  topic LIKE 'user:%:notifications'
-  AND SPLIT_PART(topic, ':', 2)::uuid = auth.uid()
-);
+-- Only authenticated users can trigger tasks
+CREATE POLICY "Users can insert their own tasks"
+ON public.colony_tasks FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = user_id);
 
--- 3. Broadcast Trigger for Notification Queue
--- Automatically pushes new notifications to the path 'user:UID:notifications' via Realtime
+-- Only owners or system workers can view task details
+CREATE POLICY "Users can view their own tasks"
+ON public.colony_tasks FOR SELECT
+TO authenticated
+USING (auth.uid() = user_id OR (auth.role() = 'service_role'));
 
-CREATE OR REPLACE FUNCTION public.broadcast_user_notifications()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  -- Broadcast the event to the specific user channel
-  PERFORM realtime.broadcast_changes(
-    'user:' || NEW.user_id::text || ':notifications', -- topic
-    'INSERT', -- event
-    'INSERT', -- type
-    TG_TABLE_NAME,
-    TG_TABLE_SCHEMA,
-    row_to_json(NEW)::jsonb, -- payload
-    NULL
-  );
-  RETURN NEW;
-END;
-$$;
-
--- Secure the function
-REVOKE ALL ON FUNCTION public.broadcast_user_notifications() FROM PUBLIC, anon, authenticated;
-
--- Attach trigger
-DROP TRIGGER IF EXISTS trg_broadcast_user_notifications ON public.notifications;
-CREATE TRIGGER trg_broadcast_user_notifications
-  AFTER INSERT ON public.notifications
-  FOR EACH ROW
-  EXECUTE FUNCTION public.broadcast_user_notifications();
-
--- 4. RLS for Critical Tables
-
--- Device Tokens (Push Notifications)
+-- 2. ENABLE RLS ON LEAKY TABLES
+-- Sensitive analytics and device data must be protected
+ALTER TABLE public.user_interactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notification_queue ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.poussoirs_appareils ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "poussoirs_appareils_own_select" ON public.poussoirs_appareils;
-CREATE POLICY "poussoirs_appareils_own_select" ON public.poussoirs_appareils
-FOR SELECT TO authenticated
-USING (user_id = auth.uid());
+CREATE POLICY "Users can manage their own interactions"
+ON public.user_interactions FOR ALL
+TO authenticated
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "poussoirs_appareils_own_insert" ON public.poussoirs_appareils;
-CREATE POLICY "poussoirs_appareils_own_insert" ON public.poussoirs_appareils
-FOR INSERT TO authenticated
-WITH CHECK (user_id = auth.uid());
+CREATE POLICY "Users can view their own device tokens"
+ON public.poussoirs_appareils FOR SELECT
+TO authenticated
+USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "poussoirs_appareils_own_delete" ON public.poussoirs_appareils;
-CREATE POLICY "poussoirs_appareils_own_delete" ON public.poussoirs_appareils
-FOR DELETE TO authenticated
-USING (user_id = auth.uid());
+-- 3. CONVERT SECURITY DEFINER VIEWS TO SECURITY INVOKER
+-- Ensures views respect the caller's RLS permissions
+ALTER VIEW public.trending_dashboard SET (security_invoker = on);
+ALTER VIEW public.tendances_par_region SET (security_invoker = on);
+ALTER VIEW public.publication_engagement_breakdown SET (security_invoker = on);
 
--- User Interactions (Analytics)
-ALTER TABLE public.user_interactions ENABLE ROW LEVEL SECURITY;
+-- 4. CONSOLIDATE REDUNDANT PROFILE POLICIES
+-- Cleanup 5+ overlapping policies on user_profiles
+DROP POLICY IF EXISTS "profiles_self_rw" ON public.user_profiles;
+DROP POLICY IF EXISTS "profiles_update_own" ON public.user_profiles;
+DROP POLICY IF EXISTS "Enable update for users based on email" ON public.user_profiles;
+DROP POLICY IF EXISTS "self_update_user_profiles" ON public.user_profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.user_profiles;
 
-DROP POLICY IF EXISTS "interactions_own_insert" ON public.user_interactions;
-CREATE POLICY "interactions_own_insert" ON public.user_interactions
-FOR INSERT TO authenticated
-WITH CHECK (user_id = auth.uid());
+CREATE POLICY "Self managed profile access"
+ON public.user_profiles FOR ALL
+TO authenticated
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
 
--- Everyone (or at least admins/analytics) might need to read, but for now restrict to own
-DROP POLICY IF EXISTS "interactions_own_read" ON public.user_interactions;
-CREATE POLICY "interactions_own_read" ON public.user_interactions
-FOR SELECT TO authenticated
-USING (user_id = auth.uid());
-
--- Colony Tasks (AI Swarm)
--- Only allow the orchestrator (service role) or admins to manage tasks generally
--- usage by users is usually indirect via API (which runs as service role or user context?)
--- If users insert tasks directly (rare), they need policies.
--- Assuming tasks are mostly backend-managed, we'll ensure RLS is enabled to block anon access.
-ALTER TABLE public.colony_tasks ENABLE ROW LEVEL SECURITY;
-
--- Allow read if it's your own task (if we tracked creator_id, but current schema doesn't have explicit user id, only origin)
--- For now, we block anon/authenticated direct access unless policy added later.
--- Service role always bypasses RLS.
-
+-- 5. SERVICE ROLE OVERRIDE (For AI Swarm/Ti-Guy)
+-- Ensure system agents can always operate
+CREATE POLICY "Service role full access"
+ON public.colony_tasks FOR ALL
+TO service_role
+USING (true)
+WITH CHECK (true);
