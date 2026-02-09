@@ -28,13 +28,13 @@ interface ZyeuteFeedProps {
 
 export const ZyeuteFeed: React.FC<ZyeuteFeedProps> = ({ className, onVideoChange }) => {
     const { tap, impact } = useHaptics();
-    
+
     // Data State
     const [posts, setPosts] = useState<Array<Post & { user: User }>>([]);
     const [page, setPage] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [hasMore, setHasMore] = useState(true);
-    
+
     // Viewport State
     const [currentIndex, setCurrentIndex] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -44,10 +44,10 @@ export const ZyeuteFeed: React.FC<ZyeuteFeedProps> = ({ className, onVideoChange
     const fetchVideoFeed = useCallback(async (pageNum: number, isInitial = false) => {
         if (isInitial) setIsLoading(true);
         try {
-            const data = await getExplorePosts(pageNum, 10);
-            
-            if (data && data.length > 0) {
-                 const processedPosts = data.map(p => ({
+            const data = await getExplorePosts(pageNum, 10) || [];
+
+            if (Array.isArray(data) && data.length > 0) {
+                const processedPosts = data.map(p => ({
                     ...p,
                     user: p.user || {
                         id: 'unknown',
@@ -129,7 +129,7 @@ export const ZyeuteFeed: React.FC<ZyeuteFeedProps> = ({ className, onVideoChange
         touchStartY.current = e.touches[0].clientY;
         isInteracting.current = true;
     };
-    
+
     const handleTouchEnd = (e: React.TouchEvent) => {
         if (!isInteracting.current) return;
         const touchEndY = e.changedTouches[0].clientY;
@@ -139,7 +139,7 @@ export const ZyeuteFeed: React.FC<ZyeuteFeedProps> = ({ className, onVideoChange
         if (deltaY > threshold) {
             goNext();
         } else if (deltaY < -threshold) {
-             goPrev();
+            goPrev();
         }
         isInteracting.current = false;
     };
@@ -162,10 +162,10 @@ export const ZyeuteFeed: React.FC<ZyeuteFeedProps> = ({ className, onVideoChange
 
 
     // -- RENDER --
-    
+
     if (isLoading && posts.length === 0) {
         return (
-             <div className="w-full h-full flex items-center justify-center bg-black">
+            <div className="w-full h-full flex items-center justify-center bg-black">
                 <div className="flex flex-col items-center">
                     <svg className="animate-spin h-10 w-10 text-gold-500 mb-4" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
@@ -188,7 +188,7 @@ export const ZyeuteFeed: React.FC<ZyeuteFeedProps> = ({ className, onVideoChange
     }
 
     return (
-        <div 
+        <div
             ref={containerRef}
             className={cn("relative w-full h-full overflow-hidden bg-black touch-none", className)}
             onTouchStart={handleTouchStart}
@@ -199,24 +199,24 @@ export const ZyeuteFeed: React.FC<ZyeuteFeedProps> = ({ className, onVideoChange
                     // 3-VIDEO BUFFER LOGIC:
                     // Only render current, previous, and next
                     if (index < currentIndex - 1 || index > currentIndex + 1) return null;
-                    
+
                     const isCurrent = index === currentIndex;
-                    
+
                     return (
                         <motion.div
                             key={post.id}
                             className="absolute inset-0 w-full h-full"
-                            initial={{ 
-                                y: index > currentIndex ? '100%' : '-100%', 
-                                opacity: 0 
+                            initial={{
+                                y: index > currentIndex ? '100%' : '-100%',
+                                opacity: 0
                             }}
-                            animate={{ 
+                            animate={{
                                 y: index === currentIndex ? '0%' : index > currentIndex ? '100%' : '-100%',
                                 opacity: index === currentIndex ? 1 : 0
                             }}
-                            exit={{ 
+                            exit={{
                                 y: index < currentIndex ? '-100%' : '100%',
-                                opacity: 0 
+                                opacity: 0
                             }}
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                             style={{ zIndex: isCurrent ? 10 : 0 }}
@@ -239,7 +239,7 @@ export const ZyeuteFeed: React.FC<ZyeuteFeedProps> = ({ className, onVideoChange
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 z-20 pointer-events-none">
                 {posts.length > 1 && (
                     <div className="w-1 h-8 bg-white/10 rounded-full flex flex-col items-center justify-start overflow-hidden">
-                        <motion.div 
+                        <motion.div
                             className="w-full bg-gold-400 rounded-full"
                             animate={{ height: `${((currentIndex + 1) / posts.length) * 100}%` }}
                         />
